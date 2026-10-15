@@ -1,0 +1,318 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>漢字名づけ支援：パーツ・イメージ検索</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        header p {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .search-box {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .filter-group {
+            margin-bottom: 15px;
+        }
+        .filter-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+        .filter-group input, .filter-group select {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .tag-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 5px;
+        }
+        .chip {
+            background: #eef2f7;
+            border: 1px solid #dcdde1;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+        }
+        .chip.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        .result-count {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .kanji-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 15px;
+        }
+        .kanji-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            border-left: 4px solid var(--accent-color);
+        }
+        .kanji-header {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .kanji-char {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            line-height: 1;
+        }
+        .kanji-meta {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .kanji-readings {
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+        }
+        .kanji-desc {
+            font-size: 0.8rem;
+            color: #555;
+            line-height: 1.4;
+        }
+        .kanji-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+        }
+        .kanji-tag {
+            background: #f1f2f6;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #57606f;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>漢字名づけ支援ツール</h1>
+        <p>パーツやイメージから、想いにぴったりの一字を探す</p>
+    </header>
+
+    <div class="search-box">
+        <!-- 読み検索 -->
+        <div class="filter-group">
+            <label for="readingInput">読み・名乗り（ひらがな）</label>
+            <input type="text" id="readingInput" placeholder="例: み, き, はる, てる など">
+        </div>
+
+        <!-- パーツ検索 -->
+        <div class="filter-group">
+            <label for="partInput">パーツ・構成要素</label>
+            <input type="text" id="partInput" placeholder="例: 車, 日, 糸 など">
+        </div>
+
+        <!-- イメージタグ検索 -->
+        <div class="filter-group">
+            <label>イメージ・意味タグ（複数選択可）</label>
+            <div id="tagContainer" class="tag-chips">
+                <!-- JavaScriptで動的にタグチップを生成します -->
+            </div>
+        </div>
+    </div>
+
+    <div id="resultCount" class="result-count">検索結果: 0件</div>
+    <div id="kanjiGrid" class="kanji-grid">
+        <!-- 検索結果がここにカード形式で表示されます -->
+    </div>
+</div>
+
+<script>
+    let kanjiData = [];
+    let selectedTags = new Set();
+
+    // 1. 起動時に JSON データを読み込む
+    async function loadData() {
+        try {
+            const response = await fetch('data.json');
+            kanjiData = await response.json();
+            initTags();
+            filterKanji(); // 初期表示（全件表示）
+        } catch (error) {
+            console.error('データ読み込みエラー:', error);
+            document.getElementById('kanjiGrid').innerHTML = '<p style="color:red;">データを正常に読み込めませんでした。data.jsonを確認してください。</p>';
+        }
+    }
+
+    // 2. 利用可能なタグのボタン（チップ）を自動生成する
+    function initTags() {
+        const allTags = new Set();
+        kanjiData.forEach(item => {
+            item.tags.forEach(tag => allTags.add(tag));
+        });
+
+        const tagContainer = document.getElementById('tagContainer');
+        tagContainer.innerHTML = '';
+
+        allTags.forEach(tag => {
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.textContent = tag;
+            chip.onclick = () => {
+                if (selectedTags.has(tag)) {
+                    selectedTags.delete(tag);
+                    chip.classList.remove('active');
+                } else {
+                    selectedTags.add(tag);
+                    chip.classList.add('active');
+                }
+                filterKanji();
+            };
+            tagContainer.appendChild(chip);
+        });
+    }
+
+    // 3. 検索・絞り込みロジック (AND検索)
+    function filterKanji() {
+        const readingQuery = document.getElementById('readingInput').value.trim();
+        const partQuery = document.getElementById('partInput').value.trim();
+
+        const filtered = kanjiData.filter(item => {
+            // ① 読みフィルタ (標準読み or 名乗りに部分一致)
+            if (readingQuery) {
+                const allReadings = [
+                    ...(item.readings.on || []),
+                    ...(item.readings.kun || []),
+                    ...(item.readings.nanori || [])
+                ].map(r => r.toLowerCase());
+                
+                // ひらがな/カタカナ/漢字の簡易一致チェック
+                const matchReading = allReadings.some(r => r.includes(readingQuery)) || item.kanji.includes(readingQuery);
+                if (!matchReading) return false;
+            }
+
+            // ② パーツフィルタ (components配列に部分一致)
+            if (partQuery) {
+                const matchPart = item.components.some(p => p.includes(partQuery)) || item.radical.includes(partQuery);
+                if (!matchPart) return false;
+            }
+
+            // ③ タグフィルタ (選択されたタグをすべて含んでいるか：AND条件)
+            if (selectedTags.size > 0) {
+                for (let tag of selectedTags) {
+                    if (!item.tags.includes(tag)) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        });
+
+        renderResults(filtered);
+    }
+
+    // 4. 検索結果を画面に描画する
+    function renderResults(results) {
+        const grid = document.getElementById('kanjiGrid');
+        const countElem = document.getElementById('resultCount');
+        
+        countElem.textContent = `検索結果: ${results.length}件`;
+        grid.innerHTML = '';
+
+        if (results.length === 0) {
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #888; padding: 20px;">条件に一致する漢字が見つかりませんでした。</p>';
+            return;
+        }
+
+        results.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'kanji-card';
+
+            const onReadings = (item.readings.on || []).join(', ');
+            const kunReadings = (item.readings.kun || []).join(', ');
+            const nanoriReadings = (item.readings.nanori || []).join(' / ');
+
+            card.innerHTML = `
+                <div class="kanji-header">
+                    <span class="kanji-char">${item.kanji}</span>
+                    <div class="kanji-meta">
+                        画数: ${item.strokes}画<br>
+                        部首: ${item.radical}
+                    </div>
+                </div>
+                <div class="kanji-readings">
+                    <strong>音:</strong> ${onReadings || '-'}<br>
+                    <strong>訓:</strong> ${kunReadings || '-'}<br>
+                    <strong>名:</strong> ${nanoriReadings || '-'}
+                </div>
+                <div class="kanji-desc">${item.description}</div>
+                <div class="kanji-tags">
+                    ${item.tags.map(t => `<span class="kanji-tag">#${t}</span>`).join('')}
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // イベントリスナーの登録
+    document.getElementById('readingInput').addEventListener('input', filterKanji);
+    document.getElementById('partInput').addEventListener('input', filterKanji);
+
+    // アプリ起動時のデータ読み込み
+    loadData();
+</script>
+
+</body>
+</html>
