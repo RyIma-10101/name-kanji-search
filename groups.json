@@ -1,0 +1,20 @@
+[
+  { "id": "mizu",   "label": "水（さんずい）",   "members": ["水", "氵", "氺"] },
+  { "id": "kokoro", "label": "心（りっしんべん）", "members": ["心", "忄"] },
+  { "id": "te",     "label": "手（てへん）",     "members": ["手", "扌"] },
+  { "id": "hito",   "label": "人（にんべん）",   "members": ["人", "亻"] },
+  { "id": "kusa",   "label": "艸（くさかんむり）", "members": ["艸", "艹"] },
+  { "id": "gon",    "label": "言（ごんべん）",   "members": ["言", "訁"] },
+  { "id": "shin",   "label": "辵（しんにょう）", "members": ["辵", "辶"] },
+  { "id": "kane",   "label": "金（かねへん）",   "members": ["金", "釒"] },
+  { "id": "hi",     "label": "火（れっか）",     "members": ["火", "灬"] },
+  { "id": "ito",    "label": "糸（いとへん）",   "members": ["糸", "糹"] },
+  { "id": "niku",   "label": "肉（にくづき）",   "members": ["肉", "⺼"] },
+  { "id": "katana", "label": "刀（りっとう）",   "members": ["刀", "刂"] },
+  { "id": "koromo", "label": "衣（ころもへん）", "members": ["衣", "衤"] },
+  { "id": "shime",  "label": "示（しめすへん）", "members": ["示", "礻"] },
+  { "id": "inu",    "label": "犬（けものへん）", "members": ["犬", "犭"] },
+  { "id": "shoku",  "label": "食（しょくへん）", "members": ["食", "飠"] },
+  { "id": "ushi",   "label": "牛（うしへん）",   "members": ["牛", "牜"] },
+  { "id": "bokuzukuri", "label": "攴（のぶん）", "members": ["攴", "攵"] }
+]
