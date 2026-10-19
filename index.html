@@ -112,8 +112,10 @@ footer a{color:#777}
 <div id="kanjiGrid" class="kanji-grid"></div>
 <div id="moreWrap" class="more-wrap"></div>
 <footer>
-  <p>漢字の読み・画数・部首などのデータは、<a href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" target="_blank" rel="noopener">KANJIDIC2</a>（© Electronic Dictionary Research and Development Group）を元にしています。<a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja" target="_blank" rel="noopener">CC BY-SA 4.0</a> のもとで利用しています。内容は編集・加工しています。</p>
-  <p>常用漢字・人名用漢字の範囲は、文化庁・法務省の公表資料に基づいています。</p>
+  <p><strong>ご注意</strong>　このサイトは名づけの参考用です。人名に使える漢字かどうかは、出生届を出す前に、法務省や市区町村の窓口などで最新の情報を確認してください。掲載内容の正確さは保証できません。</p>
+  <p><strong>漢字データの出典</strong>　漢字の読み・画数・部首などは、<a href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" target="_blank" rel="noopener">KANJIDIC2</a>（© Electronic Dictionary Research and Development Group）を元にしています。KANJIDIC2 は <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja" target="_blank" rel="noopener">CC BY-SA 4.0</a> で提供されており、ライセンスの詳細は <a href="https://www.edrdg.org/edrdg/license.html" target="_blank" rel="noopener">EDRDG のライセンスページ</a>にあります。本サイトの data.json は、KANJIDIC2 を常用漢字・人名用漢字の範囲に絞り込み、不足分の補完、部首の異体字の追加、互換字の整理などの加工をしたもので、元と同じ CC BY-SA 4.0 で提供します。</p>
+  <p><strong>パーツデータの出典</strong>　パーツ（構成要素）のデータ（components.json・parts.json）は、<a href="https://gitlab.chise.org/CHISE/ids" target="_blank" rel="noopener">CHISE プロジェクトの IDS データ</a>と<a href="https://github.com/cjkvi/cjkvi-ids" target="_blank" rel="noopener">漢字データベースプロジェクト（cjkvi-ids）</a>を元に、本サイト用に選別・編集（改変）したものです。<a href="COPYING.txt" target="_blank" rel="noopener">GNU General Public License v2 以降</a>で提供します。無保証です。</p>
+  <p>常用漢字・人名用漢字の範囲は、文化庁・法務省の公表資料に基づいています。部首番号は康熙部首の番号です。</p>
 </footer>
 </div>
 
@@ -170,8 +172,11 @@ function okuriHTML(r) {
 async function loadData() {
   try {
     kanjiData = await (await fetch('data.json')).json();
+    // パーツ（構成要素）は別ファイル（ライセンスが異なるため）。読み込んで各漢字に付ける
+    const cj = await (await fetch('components.json')).json();
+    kanjiData.forEach(it => { it.components = cj.components[it.kanji] || []; });
   } catch (e) {
-    $('kanjiGrid').innerHTML = '<p style="color:red;">data.jsonを読み込めませんでした。</p>';
+    $('kanjiGrid').innerHTML = '<p style="color:red;">data.json または components.json を読み込めませんでした。</p>';
     return;
   }
   try { groups = await (await fetch('groups.json')).json(); } catch (e) { groups = []; }
@@ -273,6 +278,9 @@ function update() {
   if ($('modal').classList.contains('open')) renderPicker();
 }
 
+// 説明文が「（準備中）」のままの字は、説明欄ごと表示しない
+const hasDesc = it => it.description && !it.description.includes('準備中');
+
 function cardHTML(item) {
   const on = usable(item.readings.on).join(', ') || '-';
   const kun = usable(item.readings.kun).map(okuriHTML).join(', ') || '-';
@@ -284,7 +292,7 @@ function cardHTML(item) {
         <strong>音:</strong> ${on}<br>
         <strong>訓:</strong> ${kun}<br>
         <strong>名:</strong> ${na}</div>
-      <div class="kanji-desc">${item.description}</div>
+      ${hasDesc(item) ? `<div class="kanji-desc">${item.description}</div>` : ''}
       ${item.compat ? `<div class="compat">※人名用に認められた同形の互換字があります（${item.compat.map(c => 'U+' + c.toUpperCase()).join('、')}）</div>` : ''}
       <div class="kanji-tags">${item.tags.map(t => `<span class="kanji-tag">#${t}</span>`).join('')}</div></div>`;
 }

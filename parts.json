@@ -1,5 +1,7 @@
 {
 "version": 1,
+"license": "GNU General Public License v2 or later (see COPYING.txt)",
+"source": "Parts list selected from the CHISE IDS data and the Kanji Database Project (cjkvi-ids), edited for this site.",
 "note": "月(ツキ)とニクヅキ(⺼)は分離済み（確認済み: moon_review_fixed.csv）",
 "recommended": [
 {"label":"人（にんべん）","forms":["人","亻"],"group":"hito","count":517},
