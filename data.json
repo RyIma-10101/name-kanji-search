@@ -51419,9 +51419,10 @@
     "readings": {
       "on": [
         "レキ",
-        "レッキ"
+        "リャク"
       ],
-      "kun": [],
+      "kun": [
+        "へ.る"],
       "nanori": []
     },
     "tags": [],
@@ -57336,9 +57337,13 @@
     "unicode": "6b77",
     "strokes": 16,
     "radical": "止",
-    "readings": {
-      "on": [],
-      "kun": [],
+    "readings": {   
+      "on": [
+        "レキ",
+        "リャク"
+      ],
+      "kun": [
+        "へ.る"],
       "nanori": []
     },
     "tags": [],
