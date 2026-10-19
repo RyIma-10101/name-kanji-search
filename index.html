@@ -48,6 +48,12 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .hdr{width:100%;font-size:.75rem;color:#888;margin:8px 0 0}
 .exp{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;margin:0 0 4px 12px}
 .compat{font-size:.75rem;color:#8a6d3b;margin-top:6px}
+.okuri{font-weight:300;font-size:.85em;color:#8a8f98}
+.grp-row{flex:0 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.grp-row .chip{white-space:nowrap}
+.grp-row .chip.big{font-size:1.1rem}
+.grp-row .exp{margin-left:12px}
+.more-wrap{text-align:center;margin:16px 0}
 footer{max-width:800px;margin:30px auto 0;padding-top:12px;border-top:1px solid #ddd;font-size:.75rem;color:#777;line-height:1.6}
 footer a{color:#777}
 </style>
@@ -83,6 +89,7 @@ footer a{color:#777}
 
 <div id="resultCount" class="result-count">検索結果: 0件</div>
 <div id="kanjiGrid" class="kanji-grid"></div>
+<div id="moreWrap" class="more-wrap"></div>
 <footer>
   <p>漢字の読み・画数・部首などのデータは、<a href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" target="_blank" rel="noopener">KANJIDIC2</a>（© Electronic Dictionary Research and Development Group）を元にしています。<a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja" target="_blank" rel="noopener">CC BY-SA 4.0</a> のもとで利用しています。内容は編集・加工しています。</p>
   <p>常用漢字・人名用漢字の範囲は、文化庁・法務省の公表資料に基づいています。</p>
@@ -108,7 +115,10 @@ footer a{color:#777}
 let kanjiData = [], groups = [], partsInfo = null;
 const state = { groups: new Set(), chars: new Set(), tags: new Set() };
 const openGroups = new Set();
-let charToGroup = new Map(), partFreq = new Map();
+let charToGroup = new Map(), partFreq = new Map(), groupMap = new Map();
+const PAGE = 120;               // 一度に表示する件数
+let lastResults = [], shown = 0;
+let timer = null, composing = false;
 
 // 部首用の別コードの字を、ふつうの字に統一する対応表
 const NORM = {'⺡':'氵','⺗':'忄','⺾':'艹','⻌':'辶','⺨':'犭','⻟':'飠'};
@@ -116,6 +126,17 @@ const norm = c => NORM[c] || c;
 // カタカナ→ひらがな、「.」「-」を除去（読み検索用）
 const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/[.\-]/g, '');
 const $ = id => document.getElementById(id);
+
+// ---- 読みの整理 ----
+// 「-ぞい」「はや-」のような接続形は表示も検索もしない
+const isJoin = r => r.startsWith('-') || r.endsWith('-');
+const usable = arr => (arr || []).filter(r => !isJoin(r));
+// 送り仮名（「.」以降）を細く小さい文字にする： は.や.い → は<細>やい</細>
+function okuriHTML(r) {
+  const i = r.indexOf('.');
+  if (i < 0) return r;
+  return r.slice(0, i) + '<span class="okuri">' + r.slice(i + 1).replace(/\./g, '') + '</span>';
+}
 
 // ---------- 読み込み ----------
 async function loadData() {
@@ -130,7 +151,7 @@ async function loadData() {
   const sel = $('strokeSel');
   for (let i = 2; i <= 9; i++) sel.add(new Option(i + '画', i));
   sel.add(new Option('10画以上', 10));
-  groups.forEach(g => { g.members = g.members.map(norm); g.members.forEach(m => charToGroup.set(m, g)); });
+  groups.forEach(g => { g.members = g.members.map(norm); g.members.forEach(m => charToGroup.set(m, g)); groupMap.set(g.id, g); });
   kanjiData.forEach(buildParts);
   initTags();
   restoreFromURL();
@@ -144,6 +165,7 @@ function buildParts(item) {
   const toks = item.radical.split(/\s+/).filter(Boolean);
   toks.forEach(t => { if (toks[0] === '肉' && t === '月') t = '⺼'; s.add(norm(t)); }); // 月とにくづきは別扱い
   item._parts = s;
+  item._rs = [...usable(item.readings.on), ...usable(item.readings.kun), ...usable(item.readings.nanori)].map(toHira);
   s.forEach(p => partFreq.set(p, (partFreq.get(p) || 0) + 1));
 }
 
@@ -162,25 +184,17 @@ function initTags() {
 // ---------- 条件 ----------
 const typedChars = () => [...$('partInput').value].filter(c => c.trim() && !',、'.includes(c)).map(norm);
 
-function matchParts(item) {
-  for (const ch of typedChars()) if (!item._parts.has(ch)) return false;
-  for (const ch of state.chars) if (!item._parts.has(ch)) return false;
-  for (const id of state.groups) {
-    const g = groups.find(x => x.id === id);
-    if (g && !g.members.some(m => item._parts.has(m))) return false; // グループ内はOR
-  }
-  return true;
-}
-
 function filterKanji() {
+  // 条件は最初に1回だけ用意する（漢字ごとに作り直さない）
   const rq = toHira($('readingInput').value.trim().normalize('NFC'));
+  const need = [...typedChars(), ...state.chars];
+  const gs = [...state.groups].map(id => groupMap.get(id)).filter(Boolean);
+  const tags = [...state.tags];
   return kanjiData.filter(item => {
-    if (rq) {
-      const rs = [...(item.readings.on||[]), ...(item.readings.kun||[]), ...(item.readings.nanori||[])].map(toHira);
-      if (!rs.some(r => r.includes(rq)) && !item.kanji.includes(rq)) return false;
-    }
-    if (!matchParts(item)) return false;
-    for (const t of state.tags) if (!item.tags.includes(t)) return false;
+    if (rq && !item._rs.some(r => r.includes(rq)) && !item.kanji.includes(rq)) return false;
+    for (const ch of need) if (!item._parts.has(ch)) return false;
+    for (const g of gs) if (!g.members.some(m => item._parts.has(m))) return false; // グループ内はOR
+    for (const t of tags) if (!item.tags.includes(t)) return false;
     return true;
   });
 }
@@ -195,26 +209,44 @@ function update() {
   if ($('modal').classList.contains('open')) renderPicker();
 }
 
-function renderResults(results) {
-  const grid = $('kanjiGrid');
-  $('resultCount').textContent = `検索結果: ${results.length}件`;
-  grid.innerHTML = '';
-  if (!results.length) { grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;padding:20px;">条件に一致する漢字が見つかりませんでした。</p>'; return; }
-  results.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'kanji-card';
-    card.innerHTML = `
+function cardHTML(item) {
+  const on = usable(item.readings.on).join(', ') || '-';
+  const kun = usable(item.readings.kun).map(okuriHTML).join(', ') || '-';
+  const na = usable(item.readings.nanori).join(' / ') || '-';
+  return `<div class="kanji-card">
       <div class="kanji-header"><span class="kanji-char">${item.kanji}</span>
         <div class="kanji-meta">画数: ${item.strokes}画<br>部首: ${item.radical}</div></div>
       <div class="kanji-readings">
-        <strong>音:</strong> ${(item.readings.on||[]).join(', ') || '-'}<br>
-        <strong>訓:</strong> ${(item.readings.kun||[]).join(', ') || '-'}<br>
-        <strong>名:</strong> ${(item.readings.nanori||[]).join(' / ') || '-'}</div>
+        <strong>音:</strong> ${on}<br>
+        <strong>訓:</strong> ${kun}<br>
+        <strong>名:</strong> ${na}</div>
       <div class="kanji-desc">${item.description}</div>
       ${item.compat ? `<div class="compat">※人名用に認められた同形の互換字があります（${item.compat.map(c => 'U+' + c.toUpperCase()).join('、')}）</div>` : ''}
-      <div class="kanji-tags">${item.tags.map(t => `<span class="kanji-tag">#${t}</span>`).join('')}</div>`;
-    grid.appendChild(card);
-  });
+      <div class="kanji-tags">${item.tags.map(t => `<span class="kanji-tag">#${t}</span>`).join('')}</div></div>`;
+}
+
+// 結果は PAGE 件ずつ表示（全件を一度に作ると重くなるため）
+function renderResults(results) {
+  lastResults = results; shown = 0;
+  $('resultCount').textContent = `検索結果: ${results.length}件`;
+  const grid = $('kanjiGrid');
+  if (!results.length) {
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;padding:20px;">条件に一致する漢字が見つかりませんでした。</p>';
+    $('moreWrap').innerHTML = ''; return;
+  }
+  grid.innerHTML = '';
+  showMore();
+}
+function showMore() {
+  const next = lastResults.slice(shown, shown + PAGE);
+  $('kanjiGrid').insertAdjacentHTML('beforeend', next.map(cardHTML).join(''));
+  shown += next.length;
+  const w = $('moreWrap'); w.innerHTML = '';
+  if (shown < lastResults.length) {
+    const b = document.createElement('button');
+    b.className = 'btn'; b.textContent = `さらに表示（${shown} / ${lastResults.length}件）`;
+    b.onclick = showMore; w.appendChild(b);
+  }
 }
 
 // 選択中のパーツ（×で解除）
@@ -262,15 +294,17 @@ function renderPicker() {
     if (note) { const n = document.createElement('div'); n.className = 'note'; n.textContent = note; body.appendChild(n); }
   };
   const box = () => { const w = document.createElement('div'); w.className = 'tag-chips'; body.appendChild(w); return w; };
-  // グループ（展開で形を指定）を wrap に追加
+  // グループは1グループごとに1行（文字の大きさは他のパーツと同じ）
   const addGroup = (wrap, g, text) => {
-    wrap.appendChild(mkChip(text || g.label, state.groups.has(g.id), toggleGroup(g)));
-    wrap.appendChild(mkChip(openGroups.has(g.id) ? '▲閉じる' : '▼形を指定', false, () => { openGroups.has(g.id) ? openGroups.delete(g.id) : openGroups.add(g.id); renderPicker(); }, 'dim'));
+    const row = document.createElement('div'); row.className = 'grp-row';
+    row.appendChild(mkChip(text || g.label, state.groups.has(g.id), toggleGroup(g), 'big'));
+    row.appendChild(mkChip(openGroups.has(g.id) ? '▲閉じる' : '▼形を指定', false, () => { openGroups.has(g.id) ? openGroups.delete(g.id) : openGroups.add(g.id); renderPicker(); }, 'dim'));
     if (openGroups.has(g.id)) {
       const m = document.createElement('div'); m.className = 'exp';
       g.members.filter(x => live(x)).forEach(x => m.appendChild(mkChip(`${x} (${live(x)})`, state.chars.has(x), toggleChar(x), 'big')));
-      wrap.appendChild(m);
+      row.appendChild(m);
     }
+    wrap.appendChild(row);
   };
   // ① おすすめ
   if (partsInfo && !q) {
@@ -323,9 +357,15 @@ function restoreFromURL() {
 }
 
 // ---------- イベント ----------
-$('readingInput').addEventListener('input', update);
-$('partInput').addEventListener('input', update);
-$('pickerFilter').addEventListener('input', renderPicker);
+// 入力のたびに検索せず、入力が止まってから検索する。変換中（IME）は待つ。
+function schedule(fn, ms) { clearTimeout(timer); timer = setTimeout(fn, ms); }
+['readingInput', 'partInput'].forEach(id => {
+  const el = $(id);
+  el.addEventListener('compositionstart', () => { composing = true; clearTimeout(timer); });
+  el.addEventListener('compositionend', () => { composing = false; schedule(update, 150); });
+  el.addEventListener('input', e => { if (composing || e.isComposing) return; schedule(update, 150); });
+});
+$('pickerFilter').addEventListener('input', () => schedule(renderPicker, 150));
 $('strokeSel').addEventListener('change', renderPicker);
 $('showMinor').addEventListener('change', renderPicker);
 $('openPicker').onclick = () => { $('modal').classList.add('open'); renderPicker(); };
