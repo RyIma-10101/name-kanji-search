@@ -54,6 +54,10 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .grp-row .chip.big{font-size:1.1rem}
 .grp-row .exp{margin-left:12px}
 .more-wrap{text-align:center;margin:16px 0}
+.result-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.result-bar .result-count{margin-bottom:0}
+.result-bar label{font-size:.85rem;color:#555}
+.result-bar select{padding:6px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;background:#fff}
 footer{max-width:800px;margin:30px auto 0;padding-top:12px;border-top:1px solid #ddd;font-size:.75rem;color:#777;line-height:1.6}
 footer a{color:#777}
 </style>
@@ -87,7 +91,18 @@ footer a{color:#777}
   <button class="btn" id="clearAll">条件をすべてクリア</button>
 </div>
 
-<div id="resultCount" class="result-count">検索結果: 0件</div>
+<div class="result-bar">
+  <div id="resultCount" class="result-count">検索結果: 0件</div>
+  <label>並べ替え
+    <select id="sortSel">
+      <option value="std">標準</option>
+      <option value="sa">画数が少ない順</option>
+      <option value="sd">画数が多い順</option>
+      <option value="yomi">読み（五十音）順</option>
+      <option value="bushu">部首番号順</option>
+    </select>
+  </label>
+</div>
 <div id="kanjiGrid" class="kanji-grid"></div>
 <div id="moreWrap" class="more-wrap"></div>
 <footer>
@@ -127,6 +142,12 @@ const norm = c => NORM[c] || c;
 const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/[.\-]/g, '');
 const $ = id => document.getElementById(id);
 
+// ---- 部首番号（康熙部首 1〜214。並び順＝番号。同じ部首の異体字はスペース区切り）----
+const BUSHU = ["一", "丨", "丶", "丿", "乙", "亅", "二", "亠", "人 亻", "儿", "入", "八", "冂", "冖", "冫", "几", "凵", "刀 刂", "力", "勹", "匕", "匚", "匸", "十", "卜", "卩", "厂", "厶", "又", "口", "囗", "土", "士", "夂", "夊", "夕", "大", "女", "子", "宀", "寸", "小", "尢 尣", "尸", "屮", "山", "巛 川", "工", "己 已 巳", "巾", "干", "幺", "广", "廴", "廾", "弋", "弓", "彐 彐 彑", "彡", "彳", "心 忄", "戈", "戶 戸", "手 扌", "支", "攴 攵", "文", "斗", "斤", "方", "无 旡", "日", "曰", "月", "木", "欠", "止", "歹 歺", "殳", "毋 母", "比", "毛", "氏", "气", "水 氵 氺", "火 灬", "爪 爫", "父", "爻", "爿", "片", "牙", "牛 牜", "犬 犭", "玄", "玉 王", "瓜", "瓦", "甘", "生", "用", "田", "疋", "疒", "癶", "白", "皮", "皿", "目 罒", "矛", "矢", "石", "示 礻", "禸", "禾", "穴", "立", "竹", "米", "糸", "缶", "网", "羊", "羽 羽", "老 耂", "而", "耒", "耳", "聿", "肉 月", "臣", "自", "至", "臼", "舌", "舛", "舟", "艮", "色", "艸 艹", "虍", "虫", "血", "行", "衣 衤", "襾 西 覀", "見", "角", "言 訁", "谷", "豆", "豕", "豸", "貝", "赤", "走", "足 𧾷", "身", "車", "辛", "辰", "辵 辶", "邑 阝", "酉", "釆", "里", "金 釒", "長", "門", "阜 阝", "隶", "隹", "雨", "靑 青", "非", "面", "革", "韋", "韭", "音", "頁", "風", "飛", "食 飠", "首", "香", "馬", "骨", "高", "髟", "鬥", "鬯", "鬲", "鬼", "魚", "鳥", "鹵", "鹿", "麥 麦", "麻", "黃 黄", "黍", "黑 黒", "黹", "黽", "鼎", "鼓", "鼠", "鼻", "齊 斉", "齒 歯", "龍 竜", "龜 亀", "龠"];
+const RAD = new Map();
+BUSHU.forEach((forms, i) => forms.split(/\s+/).forEach((t, k) => { if (!RAD.has(t) || k === 0) RAD.set(t, i + 1); }));
+const collator = new Intl.Collator('ja');
+
 // ---- 読みの整理 ----
 // 「-ぞい」「はや-」のような接続形は表示も検索もしない
 const isJoin = r => r.startsWith('-') || r.endsWith('-');
@@ -165,6 +186,9 @@ function buildParts(item) {
   const toks = item.radical.split(/\s+/).filter(Boolean);
   toks.forEach(t => { if (toks[0] === '肉' && t === '月') t = '⺼'; s.add(norm(t)); }); // 月とにくづきは別扱い
   item._parts = s;
+  item._rad = RAD.get(toks[0]) || 999;   // 部首の先頭の字から番号を求める
+  const first = usable(item.readings.on)[0] || usable(item.readings.kun)[0] || usable(item.readings.nanori)[0];
+  item._yomi = first ? toHira(first.split('.')[0]) : '\uffff';   // 読みなしは最後
   item._rs = [...usable(item.readings.on), ...usable(item.readings.kun), ...usable(item.readings.nanori)].map(toHira);
   s.forEach(p => partFreq.set(p, (partFreq.get(p) || 0) + 1));
 }
@@ -200,8 +224,30 @@ function filterKanji() {
 }
 
 // ---------- 表示 ----------
+// 並べ替え（同じ値のときは、次の基準で順番を決める）
+function sortResults(list) {
+  const mode = $('sortSel').value;
+  if (mode === 'std') return list;
+  const rq = toHira($('readingInput').value.trim().normalize('NFC'));
+  // 読みで検索中は、一致した読みを基準にする
+  const yomiOf = it => {
+    if (rq) {
+      const hit = it._rs.find(r => r.startsWith(rq)) || it._rs.find(r => r.includes(rq));
+      if (hit) return hit;
+    }
+    return it._yomi;
+  };
+  const cmp = {
+    sa:    (a, b) => a.strokes - b.strokes || a._rad - b._rad,
+    sd:    (a, b) => b.strokes - a.strokes || a._rad - b._rad,
+    yomi:  (a, b) => collator.compare(yomiOf(a), yomiOf(b)) || a.strokes - b.strokes,
+    bushu: (a, b) => a._rad - b._rad || a.strokes - b.strokes,
+  }[mode];
+  return [...list].sort(cmp);   // 元の並びは変えず、安定して並べ替える
+}
+
 function update() {
-  renderResults(filterKanji());
+  renderResults(sortResults(filterKanji()));
   renderSelected();
   renderSuggest();
   document.querySelectorAll('#tagContainer .chip').forEach(c => c.classList.toggle('active', state.tags.has(c.dataset.tag)));
@@ -344,6 +390,7 @@ function syncURL() {
   set('g', [...state.groups].join(','));
   set('c', [...state.chars].join(','));
   set('t', [...state.tags].join(','));
+  set('s', $('sortSel').value === 'std' ? '' : $('sortSel').value);
   const s = p.toString();
   history.replaceState(null, '', s ? '?' + s : location.pathname);
 }
@@ -354,6 +401,7 @@ function restoreFromURL() {
   (p.get('g') || '').split(',').filter(Boolean).forEach(x => state.groups.add(x));
   (p.get('c') || '').split(',').filter(Boolean).forEach(x => state.chars.add(x));
   (p.get('t') || '').split(',').filter(Boolean).forEach(x => state.tags.add(x));
+  const sv = p.get('s'); if ([...$('sortSel').options].some(o => o.value === sv)) $('sortSel').value = sv;
 }
 
 // ---------- イベント ----------
@@ -366,6 +414,7 @@ function schedule(fn, ms) { clearTimeout(timer); timer = setTimeout(fn, ms); }
   el.addEventListener('input', e => { if (composing || e.isComposing) return; schedule(update, 150); });
 });
 $('pickerFilter').addEventListener('input', () => schedule(renderPicker, 150));
+$('sortSel').addEventListener('change', update);
 $('strokeSel').addEventListener('change', renderPicker);
 $('showMinor').addEventListener('change', renderPicker);
 $('openPicker').onclick = () => { $('modal').classList.add('open'); renderPicker(); };
