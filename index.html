@@ -54,6 +54,8 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .grp-row .chip.big{font-size:1.1rem}
 .grp-row .exp{margin-left:12px}
 .more-wrap{text-align:center;margin:16px 0}
+.mode-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:.8rem;color:#666}
+.hint{font-size:.75rem;color:#888;margin-top:4px}
 .result-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .result-bar .result-count{margin-bottom:0}
 .result-bar label{font-size:.85rem;color:#555}
@@ -72,12 +74,16 @@ footer a{color:#777}
 <div class="search-box">
   <div class="filter-group">
     <label for="readingInput">読み・名乗り（ひらがな）</label>
-    <input type="text" id="readingInput" placeholder="例: み, き, はる, てる など">
+    <input type="text" id="readingInput" placeholder="例: み, き, はる, てる など" enterkeyhint="enter" autocomplete="off">
+    <div class="hint">Enter（改行キー）で条件に追加。複数追加できます。</div>
+    <div id="selectedReadings" class="tag-chips"></div>
+    <div id="readingMode" class="mode-row"></div>
   </div>
 
   <div class="filter-group">
     <label for="partInput">パーツ・構成要素（入力した字そのまま検索）</label>
-    <input type="text" id="partInput" placeholder="例: 車 日 氵（複数ならすべてを含む漢字）">
+    <input type="text" id="partInput" placeholder="例: 車 日 氵（複数ならすべてを含む漢字）" enterkeyhint="enter" autocomplete="off">
+    <div class="hint">Enter（改行キー）で下のタグに追加。入力した字ごとに別のタグになります。</div>
     <div id="suggestBox"></div>
     <div style="margin-top:8px"><button class="btn" id="openPicker">入力できないパーツを選ぶ</button></div>
     <div id="selectedParts" class="tag-chips"></div>
@@ -128,7 +134,8 @@ footer a{color:#777}
 
 <script>
 let kanjiData = [], groups = [], partsInfo = null;
-const state = { groups: new Set(), chars: new Set(), tags: new Set() };
+const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or' };
+const viaInput = new Set();   // 入力欄からEnterで追加したパーツ（グループ提案の対象）
 const openGroups = new Set();
 let charToGroup = new Map(), partFreq = new Map(), groupMap = new Map();
 const PAGE = 120;               // 一度に表示する件数
@@ -208,14 +215,24 @@ function initTags() {
 // ---------- 条件 ----------
 const typedChars = () => [...$('partInput').value].filter(c => c.trim() && !',、'.includes(c)).map(norm);
 
+// 読みの検索語：追加済みのタグ＋入力中の文字（ひらがなに正規化、重複なし）
+function readingTerms() {
+  const all = [...state.readings, $('readingInput').value]
+    .map(t => toHira(t.trim().normalize('NFC'))).filter(Boolean);
+  return [...new Set(all)];
+}
+
 function filterKanji() {
   // 条件は最初に1回だけ用意する（漢字ごとに作り直さない）
-  const rq = toHira($('readingInput').value.trim().normalize('NFC'));
+  const rqs = readingTerms();
   const need = [...typedChars(), ...state.chars];
   const gs = [...state.groups].map(id => groupMap.get(id)).filter(Boolean);
   const tags = [...state.tags];
   return kanjiData.filter(item => {
-    if (rq && !item._rs.some(r => r.includes(rq)) && !item.kanji.includes(rq)) return false;
+    if (rqs.length) {
+      const hit = q => item._rs.some(r => r.includes(q)) || item.kanji.includes(q);
+      if (state.rmode === 'and' ? !rqs.every(hit) : !rqs.some(hit)) return false;
+    }
     for (const ch of need) if (!item._parts.has(ch)) return false;
     for (const g of gs) if (!g.members.some(m => item._parts.has(m))) return false; // グループ内はOR
     for (const t of tags) if (!item.tags.includes(t)) return false;
@@ -228,11 +245,11 @@ function filterKanji() {
 function sortResults(list) {
   const mode = $('sortSel').value;
   if (mode === 'std') return list;
-  const rq = toHira($('readingInput').value.trim().normalize('NFC'));
+  const rqs = readingTerms();
   // 読みで検索中は、一致した読みを基準にする
   const yomiOf = it => {
-    if (rq) {
-      const hit = it._rs.find(r => r.startsWith(rq)) || it._rs.find(r => r.includes(rq));
+    for (const q of rqs) {
+      const hit = it._rs.find(r => r.startsWith(q)) || it._rs.find(r => r.includes(q));
       if (hit) return hit;
     }
     return it._yomi;
@@ -248,6 +265,7 @@ function sortResults(list) {
 
 function update() {
   renderResults(sortResults(filterKanji()));
+  renderReadings();
   renderSelected();
   renderSuggest();
   document.querySelectorAll('#tagContainer .chip').forEach(c => c.classList.toggle('active', state.tags.has(c.dataset.tag)));
@@ -295,19 +313,38 @@ function showMore() {
   }
 }
 
+// 追加済みの読み（×で解除）と、複数あるときの AND/OR 切り替え
+function renderReadings() {
+  const box = $('selectedReadings'); box.innerHTML = '';
+  state.readings.forEach(t => {
+    const c = document.createElement('div'); c.className = 'chip active'; c.textContent = t + ' ×';
+    c.onclick = () => { state.readings = state.readings.filter(x => x !== t); update(); };
+    box.appendChild(c);
+  });
+  const m = $('readingMode'); m.innerHTML = '';
+  if (readingTerms().length >= 2) {
+    const lab = document.createElement('span'); lab.textContent = '複数の読みは:'; m.appendChild(lab);
+    [['or', 'どれか含む（OR）'], ['and', 'すべて含む（AND）']].forEach(([v, text]) => {
+      m.appendChild(mkChip(text, state.rmode === v, () => { state.rmode = v; update(); }));
+    });
+  }
+}
+
 // 選択中のパーツ（×で解除）
 function renderSelected() {
   const box = $('selectedParts'); box.innerHTML = '';
   const add = (text, fn) => { const c = document.createElement('div'); c.className = 'chip active'; c.textContent = text + ' ×'; c.onclick = fn; box.appendChild(c); };
   state.groups.forEach(id => { const g = groups.find(x => x.id === id); if (g) add(g.label + ' グループ', () => { state.groups.delete(id); update(); }); });
-  state.chars.forEach(ch => add(ch, () => { state.chars.delete(ch); update(); }));
+  state.chars.forEach(ch => add(ch, () => { state.chars.delete(ch); viaInput.delete(ch); update(); }));
 }
 
 // 入力欄にグループ所属の字があれば提案
 function renderSuggest() {
   const box = $('suggestBox'); box.innerHTML = '';
   const seen = new Set();
-  typedChars().forEach(ch => {
+  // 入力中の字、と、Enterで追加したパーツが対象（パーツ選択画面で選んだ形は対象外）
+  const targets = [...typedChars(), ...[...state.chars].filter(c => viaInput.has(c))];
+  targets.forEach(ch => {
     const g = charToGroup.get(ch);
     if (!g || seen.has(g.id) || state.groups.has(g.id)) return;
     seen.add(g.id);
@@ -316,6 +353,7 @@ function renderSuggest() {
     const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'グループで探す';
     b.onclick = () => {
       $('partInput').value = [...$('partInput').value].filter(c => !g.members.includes(norm(c))).join('');
+      g.members.forEach(m => { state.chars.delete(m); viaInput.delete(m); });
       state.groups.add(g.id); update();
     };
     d.appendChild(b); box.appendChild(d);
@@ -333,7 +371,7 @@ function renderPicker() {
   const q = $('pickerFilter').value.trim();
   const sv = +$('strokeSel').value, minor = $('showMinor').checked;
   const live = p => partFreq.get(p) || 0;
-  const toggleChar = x => () => { state.chars.has(x) ? state.chars.delete(x) : state.chars.add(x); update(); };
+  const toggleChar = x => () => { viaInput.delete(x); state.chars.has(x) ? state.chars.delete(x) : state.chars.add(x); update(); };
   const toggleGroup = g => () => { state.groups.has(g.id) ? state.groups.delete(g.id) : state.groups.add(g.id); update(); };
   const head = (text, note) => {
     const h = document.createElement('h3'); h.textContent = text; body.appendChild(h);
@@ -385,7 +423,8 @@ function renderPicker() {
 function syncURL() {
   const p = new URLSearchParams();
   const set = (k, v) => { if (v) p.set(k, v); };
-  set('r', $('readingInput').value.trim());
+  set('r', [...state.readings, $('readingInput').value.trim()].filter(Boolean).join(','));
+  set('rm', state.rmode === 'and' ? 'and' : '');
   set('p', $('partInput').value.trim());
   set('g', [...state.groups].join(','));
   set('c', [...state.chars].join(','));
@@ -396,7 +435,9 @@ function syncURL() {
 }
 function restoreFromURL() {
   const p = new URLSearchParams(location.search);
-  $('readingInput').value = p.get('r') || '';
+  $('readingInput').value = '';
+  (p.get('r') || '').split(/[,、]/).map(x => x.trim()).filter(Boolean).forEach(x => { if (!state.readings.includes(x)) state.readings.push(x); });
+  state.rmode = p.get('rm') === 'and' ? 'and' : 'or';
   $('partInput').value = p.get('p') || '';
   (p.get('g') || '').split(',').filter(Boolean).forEach(x => state.groups.add(x));
   (p.get('c') || '').split(',').filter(Boolean).forEach(x => state.chars.add(x));
@@ -406,12 +447,32 @@ function restoreFromURL() {
 
 // ---------- イベント ----------
 // 入力のたびに検索せず、入力が止まってから検索する。変換中（IME）は待つ。
+let compEndAt = 0;
 function schedule(fn, ms) { clearTimeout(timer); timer = setTimeout(fn, ms); }
 ['readingInput', 'partInput'].forEach(id => {
   const el = $(id);
   el.addEventListener('compositionstart', () => { composing = true; clearTimeout(timer); });
-  el.addEventListener('compositionend', () => { composing = false; schedule(update, 150); });
+  el.addEventListener('compositionend', () => { composing = false; compEndAt = Date.now(); schedule(update, 150); });
   el.addEventListener('input', e => { if (composing || e.isComposing) return; schedule(update, 150); });
+});
+
+// Enterで入力欄の文字をタグにする（変換を確定するEnterは除く）
+function onEnter(id, fn) {
+  $(id).addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (composing || e.isComposing || e.keyCode === 229 || Date.now() - compEndAt < 60) return;
+    e.preventDefault(); clearTimeout(timer); fn();
+  });
+}
+onEnter('readingInput', () => {
+  $('readingInput').value.trim().normalize('NFC').split(/[\s,、]+/).filter(Boolean).forEach(t => {
+    if (!state.readings.some(x => toHira(x) === toHira(t))) state.readings.push(t);
+  });
+  $('readingInput').value = ''; update();
+});
+onEnter('partInput', () => {
+  typedChars().forEach(ch => { state.chars.add(ch); viaInput.add(ch); });
+  $('partInput').value = ''; update();
 });
 $('pickerFilter').addEventListener('input', () => schedule(renderPicker, 150));
 $('sortSel').addEventListener('change', update);
@@ -422,7 +483,8 @@ $('closePicker').onclick = () => $('modal').classList.remove('open');
 $('modal').onclick = e => { if (e.target.id === 'modal') $('modal').classList.remove('open'); };
 $('clearAll').onclick = () => {
   $('readingInput').value = ''; $('partInput').value = '';
-  state.groups.clear(); state.chars.clear(); state.tags.clear(); update();
+  state.groups.clear(); state.chars.clear(); state.tags.clear(); viaInput.clear();
+  state.readings = []; state.rmode = 'or'; update();
 };
 
 loadData();
