@@ -67,6 +67,9 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .grp-row .chip.big{font-size:1.1rem}
 .grp-row .exp{margin-left:12px}
 .more-wrap{text-align:center;margin:16px 0}
+.tagcat{margin:10px 0 2px;font-size:.78rem;font-weight:bold;color:#667}
+#tagContainer .chip{font-size:.85rem}
+#tagContainer .chip small{opacity:.7;margin-left:2px}
 .range-row{display:flex;align-items:center;gap:6px;font-size:.9rem}
 .range-row select{padding:6px;border:1px solid #ddd;border-radius:6px;font-size:.9rem}
 .kanji-header{position:relative}
@@ -127,7 +130,9 @@ footer a{color:#777}
 
   <div class="filter-group" id="tagGroup">
     <label>イメージ・意味タグ（複数選択可）</label>
-    <div id="tagContainer" class="tag-chips"></div>
+    <div id="selectedTags" class="tag-chips"></div>
+    <details id="tagDetails" class="radbox"><summary>タグを選ぶ</summary><div id="tagContainer"></div></details>
+    <div class="hint">同じ見出しの中で複数選ぶと「どれか」、違う見出しのタグを選ぶと「すべて」で探します。</div>
   </div>
 
   <div class="filter-group">
@@ -178,7 +183,7 @@ footer a{color:#777}
   <p><strong>漢字データの出典</strong>　漢字の読み・画数・部首などは、<a href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" target="_blank" rel="noopener">KANJIDIC2</a>（© Electronic Dictionary Research and Development Group）を元にしています。KANJIDIC2 は <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja" target="_blank" rel="noopener">CC BY-SA 4.0</a> で提供されており、ライセンスの詳細は <a href="https://www.edrdg.org/edrdg/license.html" target="_blank" rel="noopener">EDRDG のライセンスページ</a>にあります。本サイトの data.json は、KANJIDIC2 を常用漢字・人名用漢字の範囲に絞り込み、不足分の補完、部首の異体字の追加、互換字の整理などの加工をしたもので、元と同じ CC BY-SA 4.0 で提供します。</p>
   <p><strong>パーツデータの出典</strong>　パーツ（構成要素）のデータ（components.json・parts.json）は、<a href="https://gitlab.chise.org/CHISE/ids" target="_blank" rel="noopener">CHISE プロジェクトの IDS データ</a>と<a href="https://github.com/cjkvi/cjkvi-ids" target="_blank" rel="noopener">漢字データベースプロジェクト（cjkvi-ids）</a>を元に、本サイト用に選別・編集（改変）したものです。<a href="COPYING.txt" target="_blank" rel="noopener">GNU General Public License v2 以降</a>で提供します。無保証です。</p>
   <p>常用漢字・人名用漢字の範囲は、文化庁・法務省の公表資料に基づいています。部首番号は康熙部首の番号です。</p>
-  <p>© 2026 RyIma. All rights reserved.（上記の出典データを除く、このサイトの画面・検索の仕組みについて）</p>
+  <p>© 2026 RyIma. All rights reserved.（上記の出典データを除く、このサイトの画面・検索の仕組み・イメージタグについて）</p>
 </footer>
 </div>
 
@@ -222,6 +227,9 @@ let kanjiData = [], groups = [], partsInfo = null;
 const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or', rads: new Set(), xchars: new Set(), xgroups: new Set() };
 const radCount = new Map();   // 部首番号ごとの漢字数
 const kanjiMap = new Map();   // 漢字 → データ
+let tagCats = [];             // [{name, tags:[{name, desc}]}]
+const tagCat = new Map();     // タグ → カテゴリ名
+const tagCount = new Map();   // タグ → 漢字数
 let favList = [];             // お気に入り（追加した順）
 const viaInput = new Set();   // 入力欄からEnterで追加したパーツ（グループ提案の対象）
 const openGroups = new Set();
@@ -273,6 +281,12 @@ async function loadData() {
     $('kanjiGrid').innerHTML = '<p style="color:red;">data.json または components.json を読み込めませんでした。</p>';
     return;
   }
+  // イメージタグ（別ファイル。無くても他の機能は使える）
+  try {
+    const tj = await (await fetch('tags.json')).json();
+    tagCats = tj.categories || [];
+    kanjiData.forEach(it => { it.tags = (tj.kanji && tj.kanji[it.kanji]) || []; });
+  } catch (e) { tagCats = []; kanjiData.forEach(it => { it.tags = []; }); }
   try { groups = await (await fetch('groups.json')).json(); } catch (e) { groups = []; }
   try { partsInfo = await (await fetch('parts.json')).json(); } catch (e) { partsInfo = null; }
   const sel = $('strokeSel');
@@ -311,15 +325,31 @@ function buildParts(item) {
 }
 
 function initTags() {
-  const all = new Set();
-  kanjiData.forEach(k => k.tags.forEach(t => all.add(t)));
-  $('tagContainer').innerHTML = '';
-  $('tagGroup').style.display = all.size ? '' : 'none';   // タグが無い間は欄ごと隠す
-  all.forEach(tag => {
-    const chip = document.createElement('div');
-    chip.className = 'chip'; chip.textContent = tag; chip.dataset.tag = tag;
-    chip.onclick = () => { state.tags.has(tag) ? state.tags.delete(tag) : state.tags.add(tag); update(); };
-    $('tagContainer').appendChild(chip);
+  tagCat.clear(); tagCount.clear();
+  tagCats.forEach(c => c.tags.forEach(t => tagCat.set(t.name, c.name)));
+  kanjiData.forEach(k => k.tags.forEach(t => tagCount.set(t, (tagCount.get(t) || 0) + 1)));
+  const box = $('tagContainer'); box.innerHTML = '';
+  $('tagGroup').style.display = tagCount.size ? '' : 'none';   // タグが無い間は欄ごと隠す
+  tagCats.forEach(c => {
+    const list = c.tags.filter(t => tagCount.get(t.name));
+    if (!list.length) return;
+    const h = document.createElement('div'); h.className = 'tagcat'; h.textContent = c.name; box.appendChild(h);
+    const w = document.createElement('div'); w.className = 'tag-chips';
+    list.forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = 'chip'; chip.dataset.tag = t.name; chip.title = t.desc || '';
+      chip.innerHTML = `${t.name}<small>${tagCount.get(t.name)}</small>`;
+      chip.onclick = () => { state.tags.has(t.name) ? state.tags.delete(t.name) : state.tags.add(t.name); update(); };
+      w.appendChild(chip);
+    });
+    box.appendChild(w);
+  });
+}
+function renderSelTags() {
+  const box = $('selectedTags'); box.innerHTML = '';
+  [...state.tags].forEach(t => {
+    const c = document.createElement('div'); c.className = 'chip active'; c.textContent = t + ' ×';
+    c.onclick = () => { state.tags.delete(t); update(); }; box.appendChild(c);
   });
 }
 
@@ -341,7 +371,9 @@ function filterKanji() {
   const xneed = [...typedFrom('exInput'), ...state.xchars];   // 含まないパーツ
   const xgs = [...state.xgroups].map(id => groupMap.get(id)).filter(Boolean);
   const gs = [...state.groups].map(id => groupMap.get(id)).filter(Boolean);
-  const tags = [...state.tags];
+  const byCat = new Map();
+  state.tags.forEach(t => { const c = tagCat.get(t) || t; if (!byCat.has(c)) byCat.set(c, []); byCat.get(c).push(t); });
+  const tagSets = [...byCat.values()];   // 見出しごとの選択（見出しの中はどれか、見出し同士はすべて）
   let lo = +$('strokeMin').value, hi = +$('strokeMax').value;
   if (lo && hi && lo > hi) [lo, hi] = [hi, lo];
   return kanjiData.filter(item => {
@@ -354,7 +386,7 @@ function filterKanji() {
     for (const g of gs) if (!g.members.some(m => item._parts.has(m))) return false; // グループ内はOR
     for (const ch of xneed) if (item._parts.has(ch)) return false;                  // 含まない
     for (const g of xgs) if (g.members.some(m => item._parts.has(m))) return false;
-    for (const t of tags) if (!item.tags.includes(t)) return false;
+    for (const ts of tagSets) if (!ts.some(t => item.tags.includes(t))) return false;
     if (state.rads.size && !state.rads.has(item._rad)) return false;   // 部首は、選んだどれか
     return true;
   });
@@ -389,6 +421,7 @@ function update() {
   if ($('radDetails').open) renderRadicals();
   renderSelected();
   renderSuggest();
+  renderSelTags();
   document.querySelectorAll('#tagContainer .chip').forEach(c => c.classList.toggle('active', state.tags.has(c.dataset.tag)));
   syncURL();
   if ($('modal').classList.contains('open')) renderPicker();
