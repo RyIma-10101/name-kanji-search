@@ -84,7 +84,9 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .about summary{cursor:pointer;font-weight:bold;color:var(--primary-color);font-size:.9rem}
 .about ul{margin:6px 0 0;padding-left:1.2em}
 .about p{margin:8px 0 0}
-details.radbox summary{cursor:pointer;display:inline-block;padding:6px 12px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:.9rem}
+details.radbox summary{cursor:pointer;display:inline-block;list-style:none;background:#fff;border:1px solid var(--accent-color);color:var(--accent-color);padding:8px 14px;border-radius:6px;font-size:.9rem;user-select:none}
+details.radbox summary::-webkit-details-marker{display:none}
+#selectedTags:not(:empty),#selectedRads:not(:empty){margin-bottom:12px}
 #radBody{margin-top:8px;max-height:50vh;overflow:auto}
 .mode-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:.8rem;color:#666}
 .hint{font-size:.75rem;color:#888;margin-top:4px}
@@ -131,8 +133,8 @@ footer a{color:#777}
   <div class="filter-group" id="tagGroup">
     <label>イメージ・意味タグ（複数選択可）</label>
     <div id="selectedTags" class="tag-chips"></div>
-    <details id="tagDetails" class="radbox"><summary>タグを選ぶ</summary><div id="tagContainer"></div></details>
-    <div class="hint">同じ見出しの中で複数選ぶと「どれか」、違う見出しのタグを選ぶと「すべて」で探します。</div>
+    <details id="tagDetails" class="radbox"><summary data-label="タグを選ぶ">▼ タグを選ぶ</summary><div id="tagContainer"></div></details>
+    <div class="hint">複数選ぶと、どれかのタグを持つ漢字が出ます。</div>
   </div>
 
   <div class="filter-group">
@@ -146,7 +148,7 @@ footer a{color:#777}
   <div class="filter-group">
     <label>部首（選んで探す。複数選ぶと、どれか）</label>
     <div id="selectedRads" class="tag-chips"></div>
-    <details id="radDetails" class="radbox"><summary>部首を選ぶ</summary><div id="radBody"></div></details>
+    <details id="radDetails" class="radbox"><summary data-label="部首を選ぶ">▼ 部首を選ぶ</summary><div id="radBody"></div></details>
   </div>
 
   <div class="filter-group">
@@ -371,9 +373,7 @@ function filterKanji() {
   const xneed = [...typedFrom('exInput'), ...state.xchars];   // 含まないパーツ
   const xgs = [...state.xgroups].map(id => groupMap.get(id)).filter(Boolean);
   const gs = [...state.groups].map(id => groupMap.get(id)).filter(Boolean);
-  const byCat = new Map();
-  state.tags.forEach(t => { const c = tagCat.get(t) || t; if (!byCat.has(c)) byCat.set(c, []); byCat.get(c).push(t); });
-  const tagSets = [...byCat.values()];   // 見出しごとの選択（見出しの中はどれか、見出し同士はすべて）
+  const tagSel = [...state.tags];   // タグは複数選ぶと「どれか」
   let lo = +$('strokeMin').value, hi = +$('strokeMax').value;
   if (lo && hi && lo > hi) [lo, hi] = [hi, lo];
   return kanjiData.filter(item => {
@@ -386,7 +386,7 @@ function filterKanji() {
     for (const g of gs) if (!g.members.some(m => item._parts.has(m))) return false; // グループ内はOR
     for (const ch of xneed) if (item._parts.has(ch)) return false;                  // 含まない
     for (const g of xgs) if (g.members.some(m => item._parts.has(m))) return false;
-    for (const ts of tagSets) if (!ts.some(t => item.tags.includes(t))) return false;
+    if (tagSel.length && !tagSel.some(t => item.tags.includes(t))) return false;
     if (state.rads.size && !state.rads.has(item._rad)) return false;   // 部首は、選んだどれか
     return true;
   });
@@ -737,6 +737,11 @@ $('favCopy').onclick = async () => {
 $('pickerFilter').addEventListener('input', () => schedule(renderPicker, 150));
 $('sortSel').addEventListener('change', update);
 $('radDetails').addEventListener('toggle', () => { if ($('radDetails').open) renderRadicals(); });
+// 開いているときは「▲ 折りたたむ」、閉じているときは「▼ ○○を選ぶ」
+document.querySelectorAll('details.radbox').forEach(d => {
+  const sm = d.querySelector('summary');
+  d.addEventListener('toggle', () => { sm.textContent = d.open ? '▲ 折りたたむ' : '▼ ' + sm.dataset.label; });
+});
 $('strokeSel').addEventListener('change', renderPicker);
 $('showMinor').addEventListener('change', renderPicker);
 $('openPicker').onclick = () => { $('modal').classList.add('open'); renderPicker(); };
