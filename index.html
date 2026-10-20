@@ -54,6 +54,8 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .grp-row .chip.big{font-size:1.1rem}
 .grp-row .exp{margin-left:12px}
 .more-wrap{text-align:center;margin:16px 0}
+details.radbox summary{cursor:pointer;display:inline-block;padding:6px 12px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:.9rem}
+#radBody{margin-top:8px;max-height:50vh;overflow:auto}
 .mode-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:.8rem;color:#666}
 .hint{font-size:.75rem;color:#888;margin-top:4px}
 .result-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
@@ -73,14 +75,6 @@ footer a{color:#777}
 
 <div class="search-box">
   <div class="filter-group">
-    <label for="readingInput">読み・名乗り（ひらがな）</label>
-    <input type="text" id="readingInput" placeholder="例: み, き, はる, てる など" enterkeyhint="enter" autocomplete="off">
-    <div class="hint">Enter（改行キー）で条件に追加。複数追加できます。</div>
-    <div id="selectedReadings" class="tag-chips"></div>
-    <div id="readingMode" class="mode-row"></div>
-  </div>
-
-  <div class="filter-group">
     <label for="partInput">パーツ・構成要素（入力した字そのまま検索）</label>
     <input type="text" id="partInput" placeholder="例: 車 日 氵（複数ならすべてを含む漢字）" enterkeyhint="enter" autocomplete="off">
     <div class="hint">Enter（改行キー）で下のタグに追加。入力した字ごとに別のタグになります。</div>
@@ -94,8 +88,23 @@ footer a{color:#777}
     <div id="tagContainer" class="tag-chips"></div>
   </div>
 
+  <div class="filter-group">
+    <label for="readingInput">読み・名乗り（ひらがな）</label>
+    <input type="text" id="readingInput" placeholder="例: はる, み, てる など" enterkeyhint="enter" autocomplete="off">
+    <div class="hint">読みは完全一致で探します（訓読みの送り仮名は、あってもなくても可）。Enter（改行キー）で条件に追加。複数追加できます。</div>
+    <div id="selectedReadings" class="tag-chips"></div>
+    <div id="readingMode" class="mode-row"></div>
+  </div>
+
+  <div class="filter-group">
+    <label>部首（選んで探す。複数選ぶと、どれか）</label>
+    <div id="selectedRads" class="tag-chips"></div>
+    <details id="radDetails" class="radbox"><summary>部首を選ぶ</summary><div id="radBody"></div></details>
+  </div>
+
   <button class="btn" id="clearAll">条件をすべてクリア</button>
 </div>
+
 
 <div class="result-bar">
   <div id="resultCount" class="result-count">検索結果: 0件</div>
@@ -137,7 +146,8 @@ footer a{color:#777}
 
 <script>
 let kanjiData = [], groups = [], partsInfo = null;
-const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or' };
+const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or', rads: new Set() };
+const radCount = new Map();   // 部首番号ごとの漢字数
 const viaInput = new Set();   // 入力欄からEnterで追加したパーツ（グループ提案の対象）
 const openGroups = new Set();
 let charToGroup = new Map(), partFreq = new Map(), groupMap = new Map();
@@ -157,6 +167,14 @@ const BUSHU = ["一", "丨", "丶", "丿", "乙", "亅", "二", "亠", "人 亻"
 const RAD = new Map();
 BUSHU.forEach((forms, i) => forms.split(/\s+/).forEach((t, k) => { if (!RAD.has(t) || k === 0) RAD.set(t, i + 1); }));
 const collator = new Intl.Collator('ja');
+// 各画数の最後の部首番号（1画〜17画）。番号順がそのまま画数順
+const RADEND = [6, 29, 60, 94, 117, 146, 166, 175, 186, 194, 200, 204, 208, 210, 211, 213, 214];
+const RADNOTE = { 74: 'つき', 130: 'にくづき', 163: 'おおざと', 170: 'こざと' };   // 同じ形（月・阝）を区別する注記
+const radStrokes = n => RADEND.findIndex(e => n <= e) + 1;
+const radLabel = n => {
+  const f = [...new Set(BUSHU[n - 1].split(/\s+/))].filter(t => !(n === 130 && t === '月'));
+  return f.join('・') + (RADNOTE[n] ? `（${RADNOTE[n]}）` : '');
+};
 
 // ---- 読みの整理 ----
 // 「-ぞい」「はや-」のような接続形は表示も検索もしない
@@ -187,6 +205,7 @@ async function loadData() {
   sel.add(new Option('10画以上', 10));
   groups.forEach(g => { g.members = g.members.map(norm); g.members.forEach(m => charToGroup.set(m, g)); groupMap.set(g.id, g); });
   kanjiData.forEach(buildParts);
+  kanjiData.forEach(it => radCount.set(it._rad, (radCount.get(it._rad) || 0) + 1));
   initTags();
   restoreFromURL();
   update();
@@ -202,7 +221,13 @@ function buildParts(item) {
   item._rad = RAD.get(toks[0]) || 999;   // 部首の先頭の字から番号を求める
   const first = usable(item.readings.on)[0] || usable(item.readings.kun)[0] || usable(item.readings.nanori)[0];
   item._yomi = first ? toHira(first.split('.')[0]) : '\uffff';   // 読みなしは最後
-  item._rs = [...usable(item.readings.on), ...usable(item.readings.kun), ...usable(item.readings.nanori)].map(toHira);
+  // 読みは完全一致で探す。訓読み（は.る）は「はる」「は」のどちらでも当たる
+  const rs = new Set();
+  [...usable(item.readings.on), ...usable(item.readings.kun), ...usable(item.readings.nanori)].forEach(r => {
+    const full = toHira(r); if (full) rs.add(full);
+    if (r.includes('.')) { const stem = toHira(r.split('.')[0]); if (stem) rs.add(stem); }
+  });
+  item._rs = rs;
   s.forEach(p => partFreq.set(p, (partFreq.get(p) || 0) + 1));
 }
 
@@ -236,12 +261,13 @@ function filterKanji() {
   const tags = [...state.tags];
   return kanjiData.filter(item => {
     if (rqs.length) {
-      const hit = q => item._rs.some(r => r.includes(q)) || item.kanji.includes(q);
+      const hit = q => item._rs.has(q) || item.kanji.includes(q);
       if (state.rmode === 'and' ? !rqs.every(hit) : !rqs.some(hit)) return false;
     }
     for (const ch of need) if (!item._parts.has(ch)) return false;
     for (const g of gs) if (!g.members.some(m => item._parts.has(m))) return false; // グループ内はOR
     for (const t of tags) if (!item.tags.includes(t)) return false;
+    if (state.rads.size && !state.rads.has(item._rad)) return false;   // 部首は、選んだどれか
     return true;
   });
 }
@@ -255,8 +281,7 @@ function sortResults(list) {
   // 読みで検索中は、一致した読みを基準にする
   const yomiOf = it => {
     for (const q of rqs) {
-      const hit = it._rs.find(r => r.startsWith(q)) || it._rs.find(r => r.includes(q));
-      if (hit) return hit;
+      if (it._rs.has(q)) return q;
     }
     return it._yomi;
   };
@@ -272,6 +297,8 @@ function sortResults(list) {
 function update() {
   renderResults(sortResults(filterKanji()));
   renderReadings();
+  renderSelRads();
+  if ($('radDetails').open) renderRadicals();
   renderSelected();
   renderSuggest();
   document.querySelectorAll('#tagContainer .chip').forEach(c => c.classList.toggle('active', state.tags.has(c.dataset.tag)));
@@ -339,11 +366,33 @@ function renderReadings() {
   }
 }
 
+// 部首の選択（画数ごとに並べる。0字の部首は出さない）
+function renderRadicals() {
+  const body = $('radBody'); body.innerHTML = '';
+  let cur = 0, w = null;
+  for (let n = 1; n <= 214; n++) {
+    const cnt = radCount.get(n) || 0; if (!cnt) continue;
+    const st = radStrokes(n);
+    if (st !== cur) {
+      cur = st; w = document.createElement('div'); w.className = 'tag-chips';
+      const h = document.createElement('div'); h.className = 'hdr'; h.textContent = st + '画'; w.appendChild(h); body.appendChild(w);
+    }
+    w.appendChild(mkChip(`${radLabel(n)} (${cnt})`, state.rads.has(n), () => { state.rads.has(n) ? state.rads.delete(n) : state.rads.add(n); update(); }, 'big'));
+  }
+}
+function renderSelRads() {
+  const box = $('selectedRads'); box.innerHTML = '';
+  [...state.rads].sort((a, b) => a - b).forEach(n => {
+    const c = document.createElement('div'); c.className = 'chip active'; c.textContent = radLabel(n) + ' ×';
+    c.onclick = () => { state.rads.delete(n); update(); }; box.appendChild(c);
+  });
+}
+
 // 選択中のパーツ（×で解除）
 function renderSelected() {
   const box = $('selectedParts'); box.innerHTML = '';
   const add = (text, fn) => { const c = document.createElement('div'); c.className = 'chip active'; c.textContent = text + ' ×'; c.onclick = fn; box.appendChild(c); };
-  state.groups.forEach(id => { const g = groups.find(x => x.id === id); if (g) add(g.label + ' グループ', () => { state.groups.delete(id); update(); }); });
+  state.groups.forEach(id => { const g = groups.find(x => x.id === id); if (g) add(g.label, () => { state.groups.delete(id); update(); }); });
   state.chars.forEach(ch => add(ch, () => { state.chars.delete(ch); viaInput.delete(ch); update(); }));
 }
 
@@ -358,7 +407,7 @@ function renderSuggest() {
     if (!g || seen.has(g.id) || state.groups.has(g.id)) return;
     seen.add(g.id);
     const d = document.createElement('div'); d.className = 'suggest';
-    d.innerHTML = `<span>「${ch}」は「${g.label}」グループ（${g.members.join('・')}）にも含められます。</span>`;
+    d.innerHTML = `<span>「${ch}」は${g.label}にも含められます。</span>`;
     const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'グループで探す';
     b.onclick = () => {
       $('partInput').value = [...$('partInput').value].filter(c => !g.members.includes(norm(c))).join('');
@@ -388,9 +437,9 @@ function renderPicker() {
   };
   const box = () => { const w = document.createElement('div'); w.className = 'tag-chips'; body.appendChild(w); return w; };
   // グループは1グループごとに1行（文字の大きさは他のパーツと同じ）
-  const addGroup = (wrap, g, text) => {
+  const addGroup = (wrap, g) => {
     const row = document.createElement('div'); row.className = 'grp-row';
-    row.appendChild(mkChip(text || g.label, state.groups.has(g.id), toggleGroup(g), 'big'));
+    row.appendChild(mkChip(g.label, state.groups.has(g.id), toggleGroup(g), 'big'));
     row.appendChild(mkChip(openGroups.has(g.id) ? '▲閉じる' : '▼形を指定', false, () => { openGroups.has(g.id) ? openGroups.delete(g.id) : openGroups.add(g.id); renderPicker(); }, 'dim'));
     if (openGroups.has(g.id)) {
       const m = document.createElement('div'); m.className = 'exp';
@@ -403,16 +452,18 @@ function renderPicker() {
   if (partsInfo && !q) {
     head('おすすめパーツ', 'タップで選択。形が変わるものは「▼形を指定」で特定の形だけに絞れます。');
     const w = box();
-    partsInfo.recommended.forEach(e => {
-      const g = e.group && groups.find(x => x.id === e.group);
-      if (g) addGroup(w, g, e.label);
-      else { const p = norm(e.forms[0]); w.appendChild(mkChip(p, state.chars.has(p), toggleChar(p), 'big' + (live(p) ? '' : ' dim'))); }
+    // グループを先に、単独のパーツをあとに並べる（それぞれ元の順）
+    const rec = partsInfo.recommended.map(e => ({ e, g: e.group && groupMap.get(e.group) }));
+    rec.filter(x => x.g).forEach(x => addGroup(w, x.g));
+    rec.filter(x => !x.g).forEach(x => {
+      const p = norm(x.e.forms[0]);
+      w.appendChild(mkChip(p, state.chars.has(p), toggleChar(p), 'big' + (live(p) ? '' : ' dim')));
     });
   }
   // ② グループ一覧
   head('形が変わるパーツ（グループ）');
   const gw = box();
-  groups.filter(g => !q || g.label.includes(q) || g.members.some(m => q.includes(m))).forEach(g => addGroup(gw, g, `${g.label}（${g.members.join('・')}）`));
+  groups.filter(g => !q || g.label.includes(q) || g.members.some(m => q.includes(m))).forEach(g => addGroup(gw, g));
   // ③ すべてのパーツ（画数順）
   head('すべてのパーツ（画数順）', '氵などグループの形は、上のグループから選びます。');
   let list = partsInfo ? partsInfo.parts.map(e => ({ p: norm(e.p), s: e.strokes }))
@@ -438,6 +489,7 @@ function syncURL() {
   set('g', [...state.groups].join(','));
   set('c', [...state.chars].join(','));
   set('t', [...state.tags].join(','));
+  set('b', [...state.rads].join(','));
   set('s', $('sortSel').value === 'std' ? '' : $('sortSel').value);
   const s = p.toString();
   history.replaceState(null, '', s ? '?' + s : location.pathname);
@@ -451,6 +503,7 @@ function restoreFromURL() {
   (p.get('g') || '').split(',').filter(Boolean).forEach(x => state.groups.add(x));
   (p.get('c') || '').split(',').filter(Boolean).forEach(x => state.chars.add(x));
   (p.get('t') || '').split(',').filter(Boolean).forEach(x => state.tags.add(x));
+  (p.get('b') || '').split(',').map(Number).filter(n => n >= 1 && n <= 214).forEach(n => state.rads.add(n));
   const sv = p.get('s'); if ([...$('sortSel').options].some(o => o.value === sv)) $('sortSel').value = sv;
 }
 
@@ -485,6 +538,7 @@ onEnter('partInput', () => {
 });
 $('pickerFilter').addEventListener('input', () => schedule(renderPicker, 150));
 $('sortSel').addEventListener('change', update);
+$('radDetails').addEventListener('toggle', () => { if ($('radDetails').open) renderRadicals(); });
 $('strokeSel').addEventListener('change', renderPicker);
 $('showMinor').addEventListener('change', renderPicker);
 $('openPicker').onclick = () => { $('modal').classList.add('open'); renderPicker(); };
@@ -492,7 +546,7 @@ $('closePicker').onclick = () => $('modal').classList.remove('open');
 $('modal').onclick = e => { if (e.target.id === 'modal') $('modal').classList.remove('open'); };
 $('clearAll').onclick = () => {
   $('readingInput').value = ''; $('partInput').value = '';
-  state.groups.clear(); state.chars.clear(); state.tags.clear(); viaInput.clear();
+  state.groups.clear(); state.chars.clear(); state.tags.clear(); state.rads.clear(); viaInput.clear();
   state.readings = []; state.rmode = 'or'; update();
 };
 

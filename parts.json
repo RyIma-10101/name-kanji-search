@@ -11,7 +11,7 @@
 {"label":"水（さんずい）","forms":["水","氵","氺"],"group":"mizu","count":201},
 {"label":"艸（くさかんむり）","forms":["艸","艹"],"group":"kusa","count":151},
 {"label":"目","forms":["目"],"count":136},
-{"label":"心（りっしんべん）","forms":["心","忄"],"group":"kokoro","count":126},
+{"label":"心（りっしんべん）","forms":["心","忄","㣺"],"group":"kokoro","count":126},
 {"label":"火（れっか）","forms":["火","灬"],"group":"hi","count":125},
 {"label":"手（てへん）","forms":["手","扌"],"group":"te","count":125},
 {"label":"大","forms":["大"],"count":116},
