@@ -22,9 +22,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 header{text-align:center;margin-bottom:16px}
 header h1{font-size:1.5rem;color:var(--primary-color);margin-bottom:5px}
 header p{font-size:.9rem;color:#666}
-.search-box{background:var(--card-bg);padding:20px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,.05);margin-bottom:20px}
-.filter-group{margin-bottom:12px;padding:12px;border:1px solid #d5dbe3;border-left:4px solid var(--accent-color);border-radius:8px;background:#fbfcfe}
+.search-box{background:#e6edf5;padding:12px;border-radius:12px;border:1px solid #cbd7e5;margin-bottom:20px}
+.filter-group{margin-bottom:12px;padding:12px;border:1px solid #b9c7d8;border-radius:8px;background:#fff}
 .filter-group>label{display:block;font-size:.85rem;font-weight:bold;margin-bottom:5px;color:var(--primary-color)}
+.filter-group>label:first-child{margin:-12px -12px 10px;padding:8px 12px;background:var(--primary-color);color:#fff;border-radius:7px 7px 0 0}
 input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;font-size:1rem}
 .tag-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
 .chip{background:#eef2f7;border:1px solid #dcdde1;padding:6px 12px;border-radius:20px;font-size:.85rem;cursor:pointer;user-select:none;transition:all .2s}
@@ -43,8 +44,8 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .kanji-desc{font-size:.8rem;color:#555;line-height:1.4}
 .kanji-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .kanji-tag{background:#f1f2f6;font-size:.75rem;padding:2px 6px;border-radius:4px;color:#57606f}
-#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10}
-#modal.open{display:block}
+#modal,#favModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10}
+#modal.open,#favModal.open{display:block}
 .sheet{background:#fff;max-width:800px;margin:5vh auto 0;height:90vh;border-radius:12px 12px 0 0;display:flex;flex-direction:column}
 .sheet-head{padding:14px 16px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center}
 .sheet-head input{flex:1}
@@ -66,8 +67,16 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .grp-row .chip.big{font-size:1.1rem}
 .grp-row .exp{margin-left:12px}
 .more-wrap{text-align:center;margin:16px 0}
+.range-row{display:flex;align-items:center;gap:6px;font-size:.9rem}
+.range-row select{padding:6px;border:1px solid #ddd;border-radius:6px;font-size:.9rem}
+.kanji-header{position:relative}
+.fav{margin-left:auto;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#c4c9d0;line-height:1;padding:0 2px}
+.fav.on{color:#f5a623}
+.fav-row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}
+.fav-char{font-size:2rem;font-weight:bold;color:var(--primary-color);min-width:2.2rem;text-align:center}
+.fav-info{flex:1;font-size:.8rem;line-height:1.5;color:#555}
 .chip.ex{background:#c0392b;color:#fff;border-color:#c0392b}
-.sublabel{display:block;font-size:.8rem;font-weight:bold;margin:12px 0 4px;color:#c0392b}
+.filter-group>label.sublabel{display:block;font-size:.8rem;font-weight:bold;margin:14px 0 4px;color:#c0392b}
 .about{max-width:800px;margin:0 auto 16px;font-size:.85rem;color:#555;line-height:1.7;background:#fff;border:1px solid #d5dbe3;border-radius:8px;padding:8px 14px}
 .about summary{cursor:pointer;font-weight:bold;color:var(--primary-color);font-size:.9rem}
 .about ul{margin:6px 0 0;padding-left:1.2em}
@@ -116,7 +125,7 @@ footer a{color:#777}
     <div id="selectedEx" class="tag-chips"></div>
   </div>
 
-  <div class="filter-group">
+  <div class="filter-group" id="tagGroup">
     <label>イメージ・意味タグ（複数選択可）</label>
     <div id="tagContainer" class="tag-chips"></div>
   </div>
@@ -135,12 +144,19 @@ footer a{color:#777}
     <details id="radDetails" class="radbox"><summary>部首を選ぶ</summary><div id="radBody"></div></details>
   </div>
 
+  <div class="filter-group">
+    <label>画数</label>
+    <div class="range-row"><select id="strokeMin"><option value="0">指定なし</option></select> 画 〜 <select id="strokeMax"><option value="0">指定なし</option></select> 画</div>
+    <div class="hint">一般的な漢字辞典の画数です。姓名判断（旧字体・康熙字典の画数）とは違う字があります。</div>
+  </div>
+
   <button class="btn" id="clearAll">条件をすべてクリア</button>
 </div>
 
 
 <div class="result-bar">
   <div id="resultCount" class="result-count">検索結果: 0件</div>
+  <button class="btn" id="openFav">★ お気に入り（<span id="favCount">0</span>）</button>
   <label>並べ替え
     <select id="sortSel">
       <option value="std">標準</option>
@@ -166,6 +182,25 @@ footer a{color:#777}
 </footer>
 </div>
 
+<!-- お気に入り -->
+<div id="favModal">
+  <div class="sheet">
+    <div class="sheet-head">
+      <strong style="flex:1">お気に入り（検討リスト）</strong>
+      <button class="btn primary" id="closeFav">完了</button>
+    </div>
+    <div class="sub">
+      <button class="btn" id="favCopy">一覧をコピー</button>
+      <button class="btn" id="favClear">すべて削除</button>
+      <span id="favMsg" style="color:#27ae60"></span>
+    </div>
+    <div class="sheet-body">
+      <div class="note">お気に入りは、この端末のこのブラウザにだけ保存されます。ブラウザのデータを消すと、消えます。</div>
+      <div id="favBody"></div>
+    </div>
+  </div>
+</div>
+
 <!-- パーツ選択画面 -->
 <div id="modal">
   <div class="sheet">
@@ -186,6 +221,8 @@ footer a{color:#777}
 let kanjiData = [], groups = [], partsInfo = null;
 const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or', rads: new Set(), xchars: new Set(), xgroups: new Set() };
 const radCount = new Map();   // 部首番号ごとの漢字数
+const kanjiMap = new Map();   // 漢字 → データ
+let favList = [];             // お気に入り（追加した順）
 const viaInput = new Set();   // 入力欄からEnterで追加したパーツ（グループ提案の対象）
 const openGroups = new Set();
 let charToGroup = new Map(), partFreq = new Map(), groupMap = new Map();
@@ -242,6 +279,10 @@ async function loadData() {
   for (let i = 2; i <= 9; i++) sel.add(new Option(i + '画', i));
   sel.add(new Option('10画以上', 10));
   groups.forEach(g => { g.members = g.members.map(norm); g.members.forEach(m => charToGroup.set(m, g)); groupMap.set(g.id, g); });
+  kanjiData.forEach(it => kanjiMap.set(it.kanji, it));
+  const ss = kanjiData.map(k => k.strokes);
+  for (let i = Math.min(...ss); i <= Math.max(...ss); i++) { $('strokeMin').add(new Option(i, i)); $('strokeMax').add(new Option(i, i)); }
+  loadFavs(); updateFavCount();
   kanjiData.forEach(buildParts);
   kanjiData.forEach(it => radCount.set(it._rad, (radCount.get(it._rad) || 0) + 1));
   initTags();
@@ -273,6 +314,7 @@ function initTags() {
   const all = new Set();
   kanjiData.forEach(k => k.tags.forEach(t => all.add(t)));
   $('tagContainer').innerHTML = '';
+  $('tagGroup').style.display = all.size ? '' : 'none';   // タグが無い間は欄ごと隠す
   all.forEach(tag => {
     const chip = document.createElement('div');
     chip.className = 'chip'; chip.textContent = tag; chip.dataset.tag = tag;
@@ -300,7 +342,10 @@ function filterKanji() {
   const xgs = [...state.xgroups].map(id => groupMap.get(id)).filter(Boolean);
   const gs = [...state.groups].map(id => groupMap.get(id)).filter(Boolean);
   const tags = [...state.tags];
+  let lo = +$('strokeMin').value, hi = +$('strokeMax').value;
+  if (lo && hi && lo > hi) [lo, hi] = [hi, lo];
   return kanjiData.filter(item => {
+    if ((lo && item.strokes < lo) || (hi && item.strokes > hi)) return false;
     if (rqs.length) {
       const hit = q => item._rs.has(q) || item.kanji.includes(q);
       if (state.rmode === 'and' ? !rqs.every(hit) : !rqs.some(hit)) return false;
@@ -358,7 +403,8 @@ function cardHTML(item) {
   const na = usable(item.readings.nanori).join(' / ') || '-';
   return `<div class="kanji-card">
       <div class="kanji-header"><span class="kanji-char">${item.kanji}</span>
-        <div class="kanji-meta">画数: ${item.strokes}画<br>部首: ${item.radical}</div></div>
+        <div class="kanji-meta">画数: ${item.strokes}画<br>部首: ${item.radical}</div>
+        <button class="fav${isFav(item.kanji) ? ' on' : ''}" data-k="${item.kanji}" aria-label="お気に入り">${isFav(item.kanji) ? '★' : '☆'}</button></div>
       <div class="kanji-readings">
         <strong>音:</strong> ${on}<br>
         <strong>訓:</strong> ${kun}<br>
@@ -530,6 +576,40 @@ function renderPicker() {
   });
 }
 
+// ---------- お気に入り（この端末のブラウザに保存） ----------
+const isFav = k => favList.includes(k);
+function loadFavs() {
+  try {
+    const a = JSON.parse(localStorage.getItem('kanjiFavs') || '[]');
+    favList = Array.isArray(a) ? a.filter(k => kanjiMap.has(k)) : [];
+  } catch (e) { favList = []; }
+}
+function saveFavs() {
+  try { localStorage.setItem('kanjiFavs', JSON.stringify(favList)); } catch (e) { /* 保存できない環境では、開いている間だけ有効 */ }
+}
+function updateFavCount() { $('favCount').textContent = favList.length; }
+function toggleFav(k) {
+  favList = isFav(k) ? favList.filter(x => x !== k) : [...favList, k];
+  saveFavs(); updateFavCount();
+  document.querySelectorAll('.fav').forEach(b => {
+    if (b.dataset.k === k) { b.classList.toggle('on', isFav(k)); b.textContent = isFav(k) ? '★' : '☆'; }
+  });
+  if ($('favModal').classList.contains('open')) renderFavs();
+}
+function favRowHTML(k) {
+  const it = kanjiMap.get(k);
+  const on = usable(it.readings.on).join(' / ') || '-';
+  const kun = usable(it.readings.kun).map(okuriHTML).join(' / ') || '-';
+  const na = usable(it.readings.nanori).join(' / ') || '-';
+  return `<div class="fav-row"><div class="fav-char">${k}</div>
+    <div class="fav-info">${it.strokes}画<br>音: ${on}<br>訓: ${kun}<br>名: ${na}</div>
+    <button class="btn" data-del="${k}">削除</button></div>`;
+}
+function renderFavs() {
+  $('favBody').innerHTML = favList.length ? favList.map(favRowHTML).join('')
+    : '<p class="note">まだありません。漢字カードの ☆ をタップすると追加できます。</p>';
+}
+
 // ---------- URL連動 ----------
 function syncURL() {
   const p = new URLSearchParams();
@@ -541,6 +621,8 @@ function syncURL() {
   set('c', [...state.chars].join(','));
   set('t', [...state.tags].join(','));
   set('b', [...state.rads].join(','));
+  set('sn', $('strokeMin').value === '0' ? '' : $('strokeMin').value);
+  set('sx', $('strokeMax').value === '0' ? '' : $('strokeMax').value);
   set('xc', [...state.xchars].join(','));
   set('xg', [...state.xgroups].join(','));
   set('s', $('sortSel').value === 'std' ? '' : $('sortSel').value);
@@ -556,6 +638,8 @@ function restoreFromURL() {
   (p.get('g') || '').split(',').filter(Boolean).forEach(x => state.groups.add(x));
   (p.get('c') || '').split(',').filter(Boolean).forEach(x => state.chars.add(x));
   (p.get('t') || '').split(',').filter(Boolean).forEach(x => state.tags.add(x));
+  const setSel = (id, v) => { if (v && [...$(id).options].some(o => o.value === v)) $(id).value = v; };
+  setSel('strokeMin', p.get('sn')); setSel('strokeMax', p.get('sx'));
   (p.get('xc') || '').split(',').filter(Boolean).forEach(x => state.xchars.add(x));
   (p.get('xg') || '').split(',').filter(Boolean).forEach(x => state.xgroups.add(x));
   (p.get('b') || '').split(',').map(Number).filter(n => n >= 1 && n <= 214).forEach(n => state.rads.add(n));
@@ -596,6 +680,27 @@ onEnter('exInput', () => {
   $('exInput').value = ''; update();
 });
 $('exMode').addEventListener('change', renderPicker);
+$('strokeMin').addEventListener('change', update);
+$('strokeMax').addEventListener('change', update);
+
+// お気に入り
+$('kanjiGrid').addEventListener('click', e => { const b = e.target.closest('.fav'); if (b) toggleFav(b.dataset.k); });
+$('openFav').onclick = () => { renderFavs(); $('favModal').classList.add('open'); };
+$('closeFav').onclick = () => $('favModal').classList.remove('open');
+$('favModal').onclick = e => { if (e.target.id === 'favModal') $('favModal').classList.remove('open'); };
+$('favBody').addEventListener('click', e => { const b = e.target.closest('[data-del]'); if (b) toggleFav(b.dataset.del); });
+$('favClear').onclick = () => { if (favList.length && confirm('お気に入りをすべて削除しますか？')) { favList = []; saveFavs(); updateFavCount(); renderFavs(); update(); } };
+$('favCopy').onclick = async () => {
+  const text = favList.join('、'); if (!text) return;
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (_) {} ta.remove();
+  }
+  $('favMsg').textContent = ok ? 'コピーしました' : 'コピーできませんでした';
+  setTimeout(() => { $('favMsg').textContent = ''; }, 2000);
+};
 $('pickerFilter').addEventListener('input', () => schedule(renderPicker, 150));
 $('sortSel').addEventListener('change', update);
 $('radDetails').addEventListener('toggle', () => { if ($('radDetails').open) renderRadicals(); });
@@ -606,6 +711,7 @@ $('closePicker').onclick = () => $('modal').classList.remove('open');
 $('modal').onclick = e => { if (e.target.id === 'modal') $('modal').classList.remove('open'); };
 $('clearAll').onclick = () => {
   $('readingInput').value = ''; $('partInput').value = ''; $('exInput').value = '';
+  $('strokeMin').value = '0'; $('strokeMax').value = '0';
   state.groups.clear(); state.chars.clear(); state.tags.clear(); state.rads.clear(); state.xchars.clear(); state.xgroups.clear(); viaInput.clear();
   state.readings = []; state.rmode = 'or'; update();
 };
