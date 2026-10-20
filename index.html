@@ -3,7 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>漢字名づけ支援：パーツ・イメージ検索</title>
+<title>漢字名づけ支援ツール｜パーツ・読み・部首から人名用漢字を探す</title>
+<meta name="google-site-verification" content="OJZV3eN-7gShR8TOAK0w7AH2erDp5mH-8GvMh2h6OUo" />
+<meta name="description" content="子どもの名づけで「あと一字」を探すための漢字検索ツール。パーツ（さんずい・車など）、読み、部首から、常用漢字・人名用漢字2,943字を絞り込めます。">
+<link rel="canonical" href="https://ryima-10101.github.io/name-kanji-search/">
+<meta property="og:url" content="https://ryima-10101.github.io/name-kanji-search/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="漢字名づけ支援ツール">
+<meta property="og:title" content="漢字名づけ支援ツール｜パーツ・読み・部首から人名用漢字を探す">
+<meta property="og:description" content="子どもの名づけで「あと一字」を探すための漢字検索ツール。パーツ（さんずい・車など）、読み、部首から、常用漢字・人名用漢字2,943字を絞り込めます。">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E字%3C/text%3E%3C/svg%3E">
 <style>
 :root{--primary-color:#2c3e50;--accent-color:#3498db;--bg-color:#f8f9fa;--card-bg:#fff;--text-color:#333}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg-color);color:var(--text-color);margin:0;padding:20px}
@@ -54,6 +65,9 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .grp-row .chip.big{font-size:1.1rem}
 .grp-row .exp{margin-left:12px}
 .more-wrap{text-align:center;margin:16px 0}
+.about{max-width:800px;margin:30px auto 0;font-size:.85rem;color:#555;line-height:1.7}
+.about h2{font-size:1rem;margin:0 0 6px;color:#333}
+.about ul{margin:6px 0 0;padding-left:1.2em}
 details.radbox summary{cursor:pointer;display:inline-block;padding:6px 12px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:.9rem}
 #radBody{margin-top:8px;max-height:50vh;overflow:auto}
 .mode-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:.8rem;color:#666}
@@ -120,6 +134,19 @@ footer a{color:#777}
 </div>
 <div id="kanjiGrid" class="kanji-grid"></div>
 <div id="moreWrap" class="more-wrap"></div>
+<noscript><p style="color:#c00">このツールはJavaScriptを使います。JavaScriptを有効にしてご利用ください。</p></noscript>
+
+<section class="about">
+  <h2>このツールについて</h2>
+  <p>子どもの名づけで、「あと一字」を探すための漢字検索ツールです。常用漢字・人名用漢字の2,943字から、次の条件で絞り込めます。</p>
+  <ul>
+    <li><strong>パーツ</strong>：漢字を構成する部品（さんずい・車など）。複数入れると、すべてを含む漢字が出ます。</li>
+    <li><strong>読み</strong>：音読み・訓読み・名乗り（名前での読み）を、ひらがなで完全一致で探します。</li>
+    <li><strong>部首</strong>：部首の一覧から選びます。複数選ぶと、どれかの部首の漢字が出ます。</li>
+    <li>結果は、画数・読み・部首番号の順に並べ替えられます。</li>
+  </ul>
+</section>
+
 <footer>
   <p><strong>ご注意</strong>　このサイトは名づけの参考用です。人名に使える漢字かどうかは、出生届を出す前に、法務省や市区町村の窓口などで最新の情報を確認してください。掲載内容の正確さは保証できません。</p>
   <p><strong>漢字データの出典</strong>　漢字の読み・画数・部首などは、<a href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" target="_blank" rel="noopener">KANJIDIC2</a>（© Electronic Dictionary Research and Development Group）を元にしています。KANJIDIC2 は <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja" target="_blank" rel="noopener">CC BY-SA 4.0</a> で提供されており、ライセンスの詳細は <a href="https://www.edrdg.org/edrdg/license.html" target="_blank" rel="noopener">EDRDG のライセンスページ</a>にあります。本サイトの data.json は、KANJIDIC2 を常用漢字・人名用漢字の範囲に絞り込み、不足分の補完、部首の異体字の追加、互換字の整理などの加工をしたもので、元と同じ CC BY-SA 4.0 で提供します。</p>
