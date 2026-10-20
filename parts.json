@@ -15,7 +15,7 @@
 {"label":"火（れっか）","forms":["火","灬"],"group":"hi","count":125},
 {"label":"手（てへん）","forms":["手","扌"],"group":"te","count":125},
 {"label":"大","forms":["大"],"count":116},
-{"label":"王","forms":["王"],"count":106},
+{"label":"玉（たまへん）","forms":["玉","王"],"group":"tama","count":106},
 {"label":"糸（いとへん）","forms":["糸","糹"],"group":"ito","count":95},
 {"label":"言（ごんべん）","forms":["言","訁"],"group":"gon","count":87},
 {"label":"月","forms":["月"],"count":77},
@@ -27,6 +27,7 @@
 {"label":"示（しめすへん）","forms":["示","礻"],"group":"shime","count":49},
 {"label":"力","forms":["力"],"count":48},
 {"label":"巾","forms":["巾"],"count":47},
+{"label":"几","forms":["几"],"count":46},
 {"label":"白","forms":["白"],"count":42},
 {"label":"士","forms":["士"],"count":39},
 {"label":"車","forms":["車"],"count":36},
@@ -35,7 +36,6 @@
 {"label":"石","forms":["石"],"count":32},
 {"label":"犬（けものへん）","forms":["犬","犭"],"group":"inu","count":32},
 {"label":"弓","forms":["弓"],"count":30},
-{"label":"酉","forms":["酉"],"count":29},
 {"label":"耳","forms":["耳"],"count":29},
 {"label":"由","forms":["由"],"count":27},
 {"label":"斤","forms":["斤"],"count":23},
@@ -48,7 +48,9 @@
 {"label":"矢","forms":["矢"],"count":19},
 {"label":"鳥","forms":["鳥"],"count":18},
 {"label":"羽","forms":["羽"],"count":17},
-{"label":"戸","forms":["戸"],"count":17}
+{"label":"戸","forms":["戸"],"count":17},
+{"label":"音","forms":["音"],"count":14},
+{"label":"光","forms":["光"],"count":7}
 ],
 "parts": [
 {"p":"十","strokes":2,"count":632,"kind":"漢字・部首"},

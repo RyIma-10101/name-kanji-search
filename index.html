@@ -19,11 +19,11 @@
 :root{--primary-color:#2c3e50;--accent-color:#3498db;--bg-color:#f8f9fa;--card-bg:#fff;--text-color:#333}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg-color);color:var(--text-color);margin:0;padding:20px}
 .container{max-width:800px;margin:0 auto}
-header{text-align:center;margin-bottom:30px}
+header{text-align:center;margin-bottom:16px}
 header h1{font-size:1.5rem;color:var(--primary-color);margin-bottom:5px}
 header p{font-size:.9rem;color:#666}
 .search-box{background:var(--card-bg);padding:20px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,.05);margin-bottom:20px}
-.filter-group{margin-bottom:15px}
+.filter-group{margin-bottom:12px;padding:12px;border:1px solid #d5dbe3;border-left:4px solid var(--accent-color);border-radius:8px;background:#fbfcfe}
 .filter-group>label{display:block;font-size:.85rem;font-weight:bold;margin-bottom:5px;color:var(--primary-color)}
 input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;font-size:1rem}
 .tag-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
@@ -62,12 +62,16 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .okuri{font-weight:300;font-size:.85em;color:#8a8f98}
 .grp-row{flex:0 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .grp-row .chip{white-space:nowrap}
+.grp-row .chip.dim{opacity:1;background:#cfdcec;color:#1f3a5a;border-color:#8aa0b8;font-weight:bold}
 .grp-row .chip.big{font-size:1.1rem}
 .grp-row .exp{margin-left:12px}
 .more-wrap{text-align:center;margin:16px 0}
-.about{max-width:800px;margin:30px auto 0;font-size:.85rem;color:#555;line-height:1.7}
-.about h2{font-size:1rem;margin:0 0 6px;color:#333}
+.chip.ex{background:#c0392b;color:#fff;border-color:#c0392b}
+.sublabel{display:block;font-size:.8rem;font-weight:bold;margin:12px 0 4px;color:#c0392b}
+.about{max-width:800px;margin:0 auto 16px;font-size:.85rem;color:#555;line-height:1.7;background:#fff;border:1px solid #d5dbe3;border-radius:8px;padding:8px 14px}
+.about summary{cursor:pointer;font-weight:bold;color:var(--primary-color);font-size:.9rem}
 .about ul{margin:6px 0 0;padding-left:1.2em}
+.about p{margin:8px 0 0}
 details.radbox summary{cursor:pointer;display:inline-block;padding:6px 12px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:.9rem}
 #radBody{margin-top:8px;max-height:50vh;overflow:auto}
 .mode-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:.8rem;color:#666}
@@ -87,6 +91,17 @@ footer a{color:#777}
   <p>パーツやイメージから、想いにぴったりの一字を探す</p>
 </header>
 
+<details class="about">
+  <summary>このツールについて</summary>
+  <p>子どもの名づけで、「あと一字」を探すための漢字検索ツールです。常用漢字・人名用漢字の2,943字から、次の条件で絞り込めます。</p>
+  <ul>
+    <li><strong>パーツ</strong>：漢字を構成する部品（さんずい・車など）。複数入れると、すべてを含む漢字が出ます。</li>
+    <li><strong>読み</strong>：音読み・訓読み・名乗り（名前での読み）を、ひらがなで完全一致で探します。</li>
+    <li><strong>部首</strong>：部首の一覧から選びます。複数選ぶと、どれかの部首の漢字が出ます。</li>
+    <li>結果は、画数・読み・部首番号の順に並べ替えられます。</li>
+  </ul>
+</details>
+
 <div class="search-box">
   <div class="filter-group">
     <label for="partInput">パーツ・構成要素（入力した字そのまま検索）</label>
@@ -95,6 +110,10 @@ footer a{color:#777}
     <div id="suggestBox"></div>
     <div style="margin-top:8px"><button class="btn" id="openPicker">入力できないパーツを選ぶ</button></div>
     <div id="selectedParts" class="tag-chips"></div>
+    <label class="sublabel" for="exInput">含まないパーツ（入力した字の形を含む漢字を除く）</label>
+    <input type="text" id="exInput" placeholder="例: 木 氵" enterkeyhint="enter" autocomplete="off">
+    <div class="hint">Enter（改行キー）で追加。入力できない字は、パーツ選択画面の「除外モード」で選べます。</div>
+    <div id="selectedEx" class="tag-chips"></div>
   </div>
 
   <div class="filter-group">
@@ -136,16 +155,7 @@ footer a{color:#777}
 <div id="moreWrap" class="more-wrap"></div>
 <noscript><p style="color:#c00">このツールはJavaScriptを使います。JavaScriptを有効にしてご利用ください。</p></noscript>
 
-<section class="about">
-  <h2>このツールについて</h2>
-  <p>子どもの名づけで、「あと一字」を探すための漢字検索ツールです。常用漢字・人名用漢字の2,943字から、次の条件で絞り込めます。</p>
-  <ul>
-    <li><strong>パーツ</strong>：漢字を構成する部品（さんずい・車など）。複数入れると、すべてを含む漢字が出ます。</li>
-    <li><strong>読み</strong>：音読み・訓読み・名乗り（名前での読み）を、ひらがなで完全一致で探します。</li>
-    <li><strong>部首</strong>：部首の一覧から選びます。複数選ぶと、どれかの部首の漢字が出ます。</li>
-    <li>結果は、画数・読み・部首番号の順に並べ替えられます。</li>
-  </ul>
-</section>
+
 
 <footer>
   <p><strong>ご注意</strong>　このサイトは名づけの参考用です。人名に使える漢字かどうかは、出生届を出す前に、法務省や市区町村の窓口などで最新の情報を確認してください。掲載内容の正確さは保証できません。</p>
@@ -166,6 +176,7 @@ footer a{color:#777}
     <div class="sub">
       <label>画数 <select id="strokeSel"><option value="0">すべて</option></select></label>
       <label><input type="checkbox" id="showMinor"> 1字だけ含むパーツも表示</label>
+      <label style="color:#c0392b;font-weight:bold"><input type="checkbox" id="exMode"> 除外モード（タップしたパーツを含む漢字を除く）</label>
     </div>
     <div class="sheet-body" id="pickerBody"></div>
   </div>
@@ -173,7 +184,7 @@ footer a{color:#777}
 
 <script>
 let kanjiData = [], groups = [], partsInfo = null;
-const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or', rads: new Set() };
+const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or', rads: new Set(), xchars: new Set(), xgroups: new Set() };
 const radCount = new Map();   // 部首番号ごとの漢字数
 const viaInput = new Set();   // 入力欄からEnterで追加したパーツ（グループ提案の対象）
 const openGroups = new Set();
@@ -271,7 +282,8 @@ function initTags() {
 }
 
 // ---------- 条件 ----------
-const typedChars = () => [...$('partInput').value].filter(c => c.trim() && !',、'.includes(c)).map(norm);
+const typedFrom = id => [...$(id).value].filter(c => c.trim() && !',、'.includes(c)).map(norm);
+const typedChars = () => typedFrom('partInput');
 
 // 読みの検索語：追加済みのタグ＋入力中の文字（ひらがなに正規化、重複なし）
 function readingTerms() {
@@ -284,6 +296,8 @@ function filterKanji() {
   // 条件は最初に1回だけ用意する（漢字ごとに作り直さない）
   const rqs = readingTerms();
   const need = [...typedChars(), ...state.chars];
+  const xneed = [...typedFrom('exInput'), ...state.xchars];   // 含まないパーツ
+  const xgs = [...state.xgroups].map(id => groupMap.get(id)).filter(Boolean);
   const gs = [...state.groups].map(id => groupMap.get(id)).filter(Boolean);
   const tags = [...state.tags];
   return kanjiData.filter(item => {
@@ -293,6 +307,8 @@ function filterKanji() {
     }
     for (const ch of need) if (!item._parts.has(ch)) return false;
     for (const g of gs) if (!g.members.some(m => item._parts.has(m))) return false; // グループ内はOR
+    for (const ch of xneed) if (item._parts.has(ch)) return false;                  // 含まない
+    for (const g of xgs) if (g.members.some(m => item._parts.has(m))) return false;
     for (const t of tags) if (!item.tags.includes(t)) return false;
     if (state.rads.size && !state.rads.has(item._rad)) return false;   // 部首は、選んだどれか
     return true;
@@ -337,8 +353,8 @@ function update() {
 const hasDesc = it => it.description && !it.description.includes('準備中');
 
 function cardHTML(item) {
-  const on = usable(item.readings.on).join(', ') || '-';
-  const kun = usable(item.readings.kun).map(okuriHTML).join(', ') || '-';
+  const on = usable(item.readings.on).join(' / ') || '-';
+  const kun = usable(item.readings.kun).map(okuriHTML).join(' / ') || '-';
   const na = usable(item.readings.nanori).join(' / ') || '-';
   return `<div class="kanji-card">
       <div class="kanji-header"><span class="kanji-char">${item.kanji}</span>
@@ -421,6 +437,11 @@ function renderSelected() {
   const add = (text, fn) => { const c = document.createElement('div'); c.className = 'chip active'; c.textContent = text + ' ×'; c.onclick = fn; box.appendChild(c); };
   state.groups.forEach(id => { const g = groups.find(x => x.id === id); if (g) add(g.label, () => { state.groups.delete(id); update(); }); });
   state.chars.forEach(ch => add(ch, () => { state.chars.delete(ch); viaInput.delete(ch); update(); }));
+  // 含まないパーツ（赤）
+  const xb = $('selectedEx'); xb.innerHTML = '';
+  const xadd = (text, fn) => { const c = document.createElement('div'); c.className = 'chip ex'; c.textContent = '除く: ' + text + ' ×'; c.onclick = fn; xb.appendChild(c); };
+  state.xgroups.forEach(id => { const g = groupMap.get(id); if (g) xadd(g.label, () => { state.xgroups.delete(id); update(); }); });
+  state.xchars.forEach(ch => xadd(ch, () => { state.xchars.delete(ch); update(); }));
 }
 
 // 入力欄にグループ所属の字があれば提案
@@ -456,8 +477,11 @@ function renderPicker() {
   const q = $('pickerFilter').value.trim();
   const sv = +$('strokeSel').value, minor = $('showMinor').checked;
   const live = p => partFreq.get(p) || 0;
-  const toggleChar = x => () => { viaInput.delete(x); state.chars.has(x) ? state.chars.delete(x) : state.chars.add(x); update(); };
-  const toggleGroup = g => () => { state.groups.has(g.id) ? state.groups.delete(g.id) : state.groups.add(g.id); update(); };
+  const exm = () => $('exMode').checked;
+  const flip = (set, other, k) => { if (set.has(k)) set.delete(k); else { set.add(k); other.delete(k); } };   // 含める/除くは同時に選べない
+  const toggleChar = x => () => { viaInput.delete(x); exm() ? flip(state.xchars, state.chars, x) : flip(state.chars, state.xchars, x); update(); };
+  const toggleGroup = g => () => { exm() ? flip(state.xgroups, state.groups, g.id) : flip(state.groups, state.xgroups, g.id); update(); };
+  const exc = x => state.xchars.has(x) ? ' ex' : '';
   const head = (text, note) => {
     const h = document.createElement('h3'); h.textContent = text; body.appendChild(h);
     if (note) { const n = document.createElement('div'); n.className = 'note'; n.textContent = note; body.appendChild(n); }
@@ -466,11 +490,11 @@ function renderPicker() {
   // グループは1グループごとに1行（文字の大きさは他のパーツと同じ）
   const addGroup = (wrap, g) => {
     const row = document.createElement('div'); row.className = 'grp-row';
-    row.appendChild(mkChip(g.label, state.groups.has(g.id), toggleGroup(g), 'big'));
+    row.appendChild(mkChip(g.label, state.groups.has(g.id), toggleGroup(g), 'big' + (state.xgroups.has(g.id) ? ' ex' : '')));
     row.appendChild(mkChip(openGroups.has(g.id) ? '▲閉じる' : '▼形を指定', false, () => { openGroups.has(g.id) ? openGroups.delete(g.id) : openGroups.add(g.id); renderPicker(); }, 'dim'));
     if (openGroups.has(g.id)) {
       const m = document.createElement('div'); m.className = 'exp';
-      g.members.filter(x => live(x)).forEach(x => m.appendChild(mkChip(`${x} (${live(x)})`, state.chars.has(x), toggleChar(x), 'big')));
+      g.members.filter(x => live(x)).forEach(x => m.appendChild(mkChip(`${x} (${live(x)})`, state.chars.has(x), toggleChar(x), 'big' + exc(x))));
       row.appendChild(m);
     }
     wrap.appendChild(row);
@@ -484,7 +508,7 @@ function renderPicker() {
     rec.filter(x => x.g).forEach(x => addGroup(w, x.g));
     rec.filter(x => !x.g).forEach(x => {
       const p = norm(x.e.forms[0]);
-      w.appendChild(mkChip(p, state.chars.has(p), toggleChar(p), 'big' + (live(p) ? '' : ' dim')));
+      w.appendChild(mkChip(p, state.chars.has(p), toggleChar(p), 'big' + (live(p) ? '' : ' dim') + exc(p)));
     });
   }
   // ② グループ一覧
@@ -502,7 +526,7 @@ function renderPicker() {
   let w = null, cur = -1;
   list.forEach(x => {
     if (x.s !== cur) { cur = x.s; w = box(); if (x.s) { const h = document.createElement('div'); h.className = 'hdr'; h.textContent = x.s + '画'; w.appendChild(h); } }
-    w.appendChild(mkChip(`${x.p} (${live(x.p)})`, state.chars.has(x.p), toggleChar(x.p), 'big'));
+    w.appendChild(mkChip(`${x.p} (${live(x.p)})`, state.chars.has(x.p), toggleChar(x.p), 'big' + exc(x.p)));
   });
 }
 
@@ -517,6 +541,8 @@ function syncURL() {
   set('c', [...state.chars].join(','));
   set('t', [...state.tags].join(','));
   set('b', [...state.rads].join(','));
+  set('xc', [...state.xchars].join(','));
+  set('xg', [...state.xgroups].join(','));
   set('s', $('sortSel').value === 'std' ? '' : $('sortSel').value);
   const s = p.toString();
   history.replaceState(null, '', s ? '?' + s : location.pathname);
@@ -530,6 +556,8 @@ function restoreFromURL() {
   (p.get('g') || '').split(',').filter(Boolean).forEach(x => state.groups.add(x));
   (p.get('c') || '').split(',').filter(Boolean).forEach(x => state.chars.add(x));
   (p.get('t') || '').split(',').filter(Boolean).forEach(x => state.tags.add(x));
+  (p.get('xc') || '').split(',').filter(Boolean).forEach(x => state.xchars.add(x));
+  (p.get('xg') || '').split(',').filter(Boolean).forEach(x => state.xgroups.add(x));
   (p.get('b') || '').split(',').map(Number).filter(n => n >= 1 && n <= 214).forEach(n => state.rads.add(n));
   const sv = p.get('s'); if ([...$('sortSel').options].some(o => o.value === sv)) $('sortSel').value = sv;
 }
@@ -538,7 +566,7 @@ function restoreFromURL() {
 // 入力のたびに検索せず、入力が止まってから検索する。変換中（IME）は待つ。
 let compEndAt = 0;
 function schedule(fn, ms) { clearTimeout(timer); timer = setTimeout(fn, ms); }
-['readingInput', 'partInput'].forEach(id => {
+['readingInput', 'partInput', 'exInput'].forEach(id => {
   const el = $(id);
   el.addEventListener('compositionstart', () => { composing = true; clearTimeout(timer); });
   el.addEventListener('compositionend', () => { composing = false; compEndAt = Date.now(); schedule(update, 150); });
@@ -560,9 +588,14 @@ onEnter('readingInput', () => {
   $('readingInput').value = ''; update();
 });
 onEnter('partInput', () => {
-  typedChars().forEach(ch => { state.chars.add(ch); viaInput.add(ch); });
+  typedChars().forEach(ch => { state.chars.add(ch); viaInput.add(ch); state.xchars.delete(ch); });
   $('partInput').value = ''; update();
 });
+onEnter('exInput', () => {
+  typedFrom('exInput').forEach(ch => { state.xchars.add(ch); state.chars.delete(ch); viaInput.delete(ch); });
+  $('exInput').value = ''; update();
+});
+$('exMode').addEventListener('change', renderPicker);
 $('pickerFilter').addEventListener('input', () => schedule(renderPicker, 150));
 $('sortSel').addEventListener('change', update);
 $('radDetails').addEventListener('toggle', () => { if ($('radDetails').open) renderRadicals(); });
@@ -572,8 +605,8 @@ $('openPicker').onclick = () => { $('modal').classList.add('open'); renderPicker
 $('closePicker').onclick = () => $('modal').classList.remove('open');
 $('modal').onclick = e => { if (e.target.id === 'modal') $('modal').classList.remove('open'); };
 $('clearAll').onclick = () => {
-  $('readingInput').value = ''; $('partInput').value = '';
-  state.groups.clear(); state.chars.clear(); state.tags.clear(); state.rads.clear(); viaInput.clear();
+  $('readingInput').value = ''; $('partInput').value = ''; $('exInput').value = '';
+  state.groups.clear(); state.chars.clear(); state.tags.clear(); state.rads.clear(); state.xchars.clear(); state.xgroups.clear(); viaInput.clear();
   state.readings = []; state.rmode = 'or'; update();
 };
 

@@ -17,5 +17,6 @@
   {"id": "shoku", "label": "食グループ（食・飠・𩙿）", "members": ["食", "飠", "𩙿"]},
   {"id": "ushi", "label": "牛グループ（牛・牜）", "members": ["牛", "牜"]},
   {"id": "bokuzukuri", "label": "攵グループ（攵・攴）", "members": ["攴", "攵"]},
-  {"id": "ashi", "label": "足グループ（足・𧾷）", "members": ["足", "𧾷"]}
+  {"id": "ashi", "label": "足グループ（足・𧾷）", "members": ["足", "𧾷"]},
+  {"id": "tama", "label": "玉グループ（玉・王）", "members": ["玉", "王"]}
 ]
