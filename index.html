@@ -45,6 +45,16 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .kanji-place{font-size:.72rem;color:#8a8f98;margin-top:3px}
 .sort-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .chip.toggle{font-size:.8rem;padding:5px 10px}
+#kanjiGrid{position:relative}
+.kanji-grid.compact{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.mini-card{position:relative;aspect-ratio:1/1;background:var(--card-bg);border-radius:10px;box-shadow:0 2px 4px rgba(0,0,0,.06);border:1px solid #e3e8ef;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;box-sizing:border-box;overflow:hidden}
+.mini-card.sel{border:2px solid var(--accent-color)}
+.mini-char{font-size:2rem;font-weight:bold;color:var(--primary-color);line-height:1.1}
+.mini-meta{font-size:.68rem;color:#777;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center}
+.mini-card .fav{position:absolute;top:2px;right:2px;font-size:1.1rem;margin:0}
+.kanji-pop{position:absolute;z-index:5;overflow:hidden;box-sizing:border-box;box-shadow:0 6px 20px rgba(0,0,0,.22);transition:left .3s ease,top .3s ease,width .3s ease,height .3s ease}
+.kanji-pop.kanji-card{margin:0}
+@media (prefers-reduced-motion: reduce){.kanji-pop{transition:none}}
 .sort-note{flex-basis:100%;font-size:.72rem;color:#888;margin-top:-4px}
 .kanji-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .kanji-tag{background:#f1f2f6;font-size:.75rem;padding:2px 6px;border-radius:4px;color:#57606f}
@@ -182,6 +192,7 @@ footer a{color:#777}
       </select>
     </label>
     <div class="chip toggle" id="tagFirst" role="button" aria-pressed="false">タグ付きを優先表示</div>
+    <div class="chip toggle" id="viewToggle" role="button" aria-pressed="false">コンパクト表示</div>
   </div>
   <div class="sort-note">よく使われる漢字や良い意味の漢字に、優先してタグを付けています。</div>
 </div>
@@ -238,6 +249,8 @@ footer a{color:#777}
 <script>
 let kanjiData = [], groups = [], partsInfo = null;
 const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or', rads: new Set(), xchars: new Set(), xgroups: new Set(), strokes: new Set(), tagFirst: false };
+let compact = false;           // コンパクト表示（この端末のブラウザに保存）
+try { compact = localStorage.getItem('kanjiView') === 'compact'; } catch (e) {}
 let meanings = {};             // 漢字 → {m:字義, place:国名・都市名}
 const radCount = new Map();   // 部首番号ごとの漢字数
 const kanjiMap = new Map();   // 漢字 → データ
@@ -449,6 +462,8 @@ function update() {
   renderSelStrokes();
   $('tagFirst').classList.toggle('active', state.tagFirst);
   $('tagFirst').setAttribute('aria-pressed', state.tagFirst);
+  $('viewToggle').classList.toggle('active', compact);
+  $('viewToggle').setAttribute('aria-pressed', compact);
   document.querySelectorAll('#tagContainer .chip').forEach(c => c.classList.toggle('active', state.tags.has(c.dataset.tag)));
   syncURL();
   if ($('modal').classList.contains('open')) renderPicker();
@@ -469,15 +484,17 @@ function cardHTML(item) {
         <strong>音:</strong> ${on}<br>
         <strong>訓:</strong> ${kun}<br>
         <strong>名:</strong> ${na}</div>
-      ${meaningOf(item) ? `<div class="kanji-desc">${meaningOf(item).m}</div>` : ''}
-      ${meaningOf(item) && meaningOf(item).place ? `<div class="kanji-place">国名・都市名：${meaningOf(item).place}</div>` : ''}
+      ${meaningOf(item) ? `<div class="kanji-desc"><strong>字義:</strong> ${meaningOf(item).m}</div>` : ''}
+      ${meaningOf(item) && meaningOf(item).place ? `<div class="kanji-place">国・都市の一文字表記：${meaningOf(item).place}</div>` : ''}
       ${item.compat ? `<div class="compat">※人名用に認められた同形の互換字があります（${item.compat.map(c => 'U+' + c.toUpperCase()).join('、')}）</div>` : ''}
       <div class="kanji-tags">${item.tags.map(t => `<span class="kanji-tag">#${t}</span>`).join('')}</div></div>`;
 }
 
 // 結果は PAGE 件ずつ表示（全件を一度に作ると重くなるため）
 function renderResults(results) {
+  closePop(true);
   lastResults = results; shown = 0;
+  $('kanjiGrid').classList.toggle('compact', compact);
   $('resultCount').textContent = `検索結果: ${results.length}件`;
   const grid = $('kanjiGrid');
   if (!results.length) {
@@ -487,9 +504,15 @@ function renderResults(results) {
   grid.innerHTML = '';
   showMore();
 }
+// コンパクト表示の小さいカード（漢字・画数・部首・☆）
+function miniHTML(item) {
+  return `<div class="mini-card" data-k="${item.kanji}"><span class="mini-char">${item.kanji}</span>
+    <span class="mini-meta">${item.strokes}画・${item.radical.split(/\s+/)[0]}</span>
+    <button class="fav${isFav(item.kanji) ? ' on' : ''}" data-k="${item.kanji}" aria-label="お気に入り">${isFav(item.kanji) ? '★' : '☆'}</button></div>`;
+}
 function showMore() {
   const next = lastResults.slice(shown, shown + PAGE);
-  $('kanjiGrid').insertAdjacentHTML('beforeend', next.map(cardHTML).join(''));
+  $('kanjiGrid').insertAdjacentHTML('beforeend', next.map(compact ? miniHTML : cardHTML).join(''));
   shown += next.length;
   const w = $('moreWrap'); w.innerHTML = '';
   if (shown < lastResults.length) {
@@ -747,6 +770,66 @@ $('strokeAdd').addEventListener('change', () => {
   $('strokeAdd').value = '0'; update();
 });
 $('tagFirst').onclick = () => { state.tagFirst = !state.tagFirst; update(); };
+$('viewToggle').onclick = () => {
+  compact = !compact;
+  try { localStorage.setItem('kanjiView', compact ? 'compact' : 'detail'); } catch (e) {}
+  update();
+};
+
+// ---------- コンパクト表示：タップで横に広げる ----------
+let pop = null, popSrc = null, pressAt = 0, pressX = 0, pressY = 0, scrollAt = 0;
+const DUR = 300;   // アニメーションの長さ（ミリ秒）
+// 小さいカードの位置（グリッド基準）
+function rectIn(el) {
+  const g = $('kanjiGrid').getBoundingClientRect(), r = el.getBoundingClientRect();
+  return { left: r.left - g.left, top: r.top - g.top, width: r.width, height: r.height };
+}
+function openPop(mini) {
+  const item = kanjiMap.get(mini.dataset.k); if (!item) return;
+  const grid = $('kanjiGrid'), from = rectIn(mini);
+  const el = document.createElement('div');
+  el.innerHTML = cardHTML(item);
+  const card = el.firstElementChild;
+  card.classList.add('kanji-pop');
+  // 広げたあとの高さを先に測る
+  card.style.cssText = `left:0;top:${from.top}px;width:${grid.clientWidth}px;visibility:hidden;transition:none`;
+  grid.appendChild(card);
+  const fullH = card.scrollHeight;
+  // 小さいカードの位置から始める
+  card.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px;transition:none`;
+  card.getBoundingClientRect();   // 位置を確定させてからアニメーション
+  card.style.transition = '';
+  card.style.left = '0px'; card.style.width = grid.clientWidth + 'px'; card.style.height = fullH + 'px';
+  setTimeout(() => { if (pop === card) card.style.height = 'auto'; }, DUR + 20);
+  mini.classList.add('sel');
+  pop = card; popSrc = mini; scrollAt = window.scrollY;
+}
+function closePop(instant) {
+  if (!pop) return;
+  const card = pop, mini = popSrc; pop = null; popSrc = null;
+  if (mini) mini.classList.remove('sel');
+  if (instant || !mini || !mini.isConnected) { card.remove(); return; }
+  const to = rectIn(mini);
+  card.style.height = card.offsetHeight + 'px';
+  card.getBoundingClientRect();
+  card.style.left = to.left + 'px'; card.style.width = to.width + 'px'; card.style.height = to.height + 'px';
+  setTimeout(() => card.remove(), DUR + 20);
+}
+// 長押し（コピーのため）は反応しない。短いタップだけを扱う
+document.addEventListener('pointerdown', e => { pressAt = Date.now(); pressX = e.clientX; pressY = e.clientY; }, true);
+document.addEventListener('click', e => {
+  const isTap = Date.now() - pressAt < 500 && Math.abs(e.clientX - pressX) < 10 && Math.abs(e.clientY - pressY) < 10;
+  if (!isTap) return;
+  if (e.target.closest('.fav')) return;                       // ☆はお気に入りだけ
+  const selText = String(window.getSelection && window.getSelection());
+  if (pop && e.target.closest('.kanji-pop') && selText) return; // 文字を選んでいる間は閉じない
+  const mini = e.target.closest('.mini-card');
+  if (pop) { const same = mini && mini === popSrc; closePop(); if (same || !mini) return; }
+  if (mini) openPop(mini);
+}, true);
+// スワイプ（スクロール）したら閉じる
+window.addEventListener('scroll', () => { if (pop && Math.abs(window.scrollY - scrollAt) > 12) closePop(); }, { passive: true });
+window.addEventListener('resize', () => closePop(true));
 
 // お気に入り
 $('kanjiGrid').addEventListener('click', e => { const b = e.target.closest('.fav'); if (b) toggleFav(b.dataset.k); });
