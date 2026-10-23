@@ -42,6 +42,10 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 .kanji-meta{font-size:.8rem;color:#666}
 .kanji-readings{font-size:.85rem;margin-bottom:6px}
 .kanji-desc{font-size:.8rem;color:#555;line-height:1.4}
+.kanji-place{font-size:.72rem;color:#8a8f98;margin-top:3px}
+.sort-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip.toggle{font-size:.8rem;padding:5px 10px}
+.sort-note{flex-basis:100%;font-size:.72rem;color:#888;margin-top:-4px}
 .kanji-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .kanji-tag{background:#f1f2f6;font-size:.75rem;padding:2px 6px;border-radius:4px;color:#57606f}
 #modal,#favModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10}
@@ -87,6 +91,7 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 details.radbox summary{cursor:pointer;display:inline-block;list-style:none;background:#fff;border:1px solid var(--accent-color);color:var(--accent-color);padding:8px 14px;border-radius:6px;font-size:.9rem;user-select:none}
 details.radbox summary::-webkit-details-marker{display:none}
 #selectedTags:not(:empty),#selectedRads:not(:empty){margin-bottom:12px}
+#selectedStrokes:not(:empty){margin-top:8px}
 #radBody{margin-top:8px;max-height:50vh;overflow:auto}
 .mode-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:.8rem;color:#666}
 .hint{font-size:.75rem;color:#888;margin-top:4px}
@@ -112,7 +117,8 @@ footer a{color:#777}
     <li><strong>パーツ</strong>：漢字を構成する部品（さんずい・車など）。複数入れると、すべてを含む漢字が出ます。</li>
     <li><strong>読み</strong>：音読み・訓読み・名乗り（名前での読み）を、ひらがなで完全一致で探します。</li>
     <li><strong>部首</strong>：部首の一覧から選びます。複数選ぶと、どれかの部首の漢字が出ます。</li>
-    <li>結果は、画数・読み・部首番号の順に並べ替えられます。</li>
+    <li><strong>画数</strong>：複数選ぶと、どれかの画数の漢字が出ます（姓名判断で候補の画数が決まっているときなど）。</li>
+    <li>結果は、画数・読み・部首番号の順に並べ替えられます。標準の並びは、タグの付いた漢字が先です。</li>
   </ul>
 </details>
 
@@ -153,8 +159,9 @@ footer a{color:#777}
 
   <div class="filter-group">
     <label>画数</label>
-    <div class="range-row"><select id="strokeMin"><option value="0">指定なし</option></select> 画 〜 <select id="strokeMax"><option value="0">指定なし</option></select> 画</div>
-    <div class="hint">一般的な漢字辞典の画数です。姓名判断（旧字体・康熙字典の画数）とは違う字があります。</div>
+    <div class="range-row"><select id="strokeAdd"><option value="0">画数を追加</option></select></div>
+    <div id="selectedStrokes" class="tag-chips"></div>
+    <div class="hint">複数選ぶと、どれかの画数の漢字が出ます（例：11画と15画）。一般的な漢字辞典の画数です。姓名判断（旧字体・康熙字典の画数）とは違う字があります。</div>
   </div>
 
   <button class="btn" id="clearAll">条件をすべてクリア</button>
@@ -164,15 +171,19 @@ footer a{color:#777}
 <div class="result-bar">
   <div id="resultCount" class="result-count">検索結果: 0件</div>
   <button class="btn" id="openFav">★ お気に入り（<span id="favCount">0</span>）</button>
-  <label>並べ替え
-    <select id="sortSel">
-      <option value="std">標準</option>
-      <option value="sa">画数が少ない順</option>
-      <option value="sd">画数が多い順</option>
-      <option value="yomi">読み（五十音）順</option>
-      <option value="bushu">部首番号順</option>
-    </select>
-  </label>
+  <div class="sort-row">
+    <label>並べ替え
+      <select id="sortSel">
+        <option value="std">標準</option>
+        <option value="sa">画数が少ない順</option>
+        <option value="sd">画数が多い順</option>
+        <option value="yomi">読み（五十音）順</option>
+        <option value="bushu">部首番号順</option>
+      </select>
+    </label>
+    <div class="chip toggle" id="tagFirst" role="button" aria-pressed="false">タグ付きを優先表示</div>
+  </div>
+  <div class="sort-note">よく使われる漢字や良い意味の漢字に、優先してタグを付けています。</div>
 </div>
 <div id="kanjiGrid" class="kanji-grid"></div>
 <div id="moreWrap" class="more-wrap"></div>
@@ -185,7 +196,7 @@ footer a{color:#777}
   <p><strong>漢字データの出典</strong>　漢字の読み・画数・部首などは、<a href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" target="_blank" rel="noopener">KANJIDIC2</a>（© Electronic Dictionary Research and Development Group）を元にしています。KANJIDIC2 は <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja" target="_blank" rel="noopener">CC BY-SA 4.0</a> で提供されており、ライセンスの詳細は <a href="https://www.edrdg.org/edrdg/license.html" target="_blank" rel="noopener">EDRDG のライセンスページ</a>にあります。本サイトの data.json は、KANJIDIC2 を常用漢字・人名用漢字の範囲に絞り込み、不足分の補完、部首の異体字の追加、互換字の整理などの加工をしたもので、元と同じ CC BY-SA 4.0 で提供します。</p>
   <p><strong>パーツデータの出典</strong>　パーツ（構成要素）のデータ（components.json・parts.json）は、<a href="https://gitlab.chise.org/CHISE/ids" target="_blank" rel="noopener">CHISE プロジェクトの IDS データ</a>と<a href="https://github.com/cjkvi/cjkvi-ids" target="_blank" rel="noopener">漢字データベースプロジェクト（cjkvi-ids）</a>を元に、本サイト用に選別・編集（改変）したものです。<a href="COPYING.txt" target="_blank" rel="noopener">GNU General Public License v2 以降</a>で提供します。無保証です。</p>
   <p>常用漢字・人名用漢字の範囲は、文化庁・法務省の公表資料に基づいています。部首番号は康熙部首の番号です。</p>
-  <p>© 2026 RyIma. All rights reserved.（上記の出典データを除く、このサイトの画面・検索の仕組み・イメージタグについて）</p>
+  <p>© 2026 RyIma. All rights reserved.（上記の出典データを除く、このサイトの画面・検索の仕組み・イメージタグ・字義について）</p>
 </footer>
 </div>
 
@@ -226,7 +237,8 @@ footer a{color:#777}
 
 <script>
 let kanjiData = [], groups = [], partsInfo = null;
-const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or', rads: new Set(), xchars: new Set(), xgroups: new Set() };
+const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or', rads: new Set(), xchars: new Set(), xgroups: new Set(), strokes: new Set(), tagFirst: false };
+let meanings = {};             // 漢字 → {m:字義, place:国名・都市名}
 const radCount = new Map();   // 部首番号ごとの漢字数
 const kanjiMap = new Map();   // 漢字 → データ
 let tagCats = [];             // [{name, tags:[{name, desc}]}]
@@ -289,6 +301,8 @@ async function loadData() {
     tagCats = tj.categories || [];
     kanjiData.forEach(it => { it.tags = (tj.kanji && tj.kanji[it.kanji]) || []; });
   } catch (e) { tagCats = []; kanjiData.forEach(it => { it.tags = []; }); }
+  // 字義（別ファイル。無くても他の機能は使える）
+  try { meanings = ((await (await fetch('meanings.json')).json()).kanji) || {}; } catch (e) { meanings = {}; }
   try { groups = await (await fetch('groups.json')).json(); } catch (e) { groups = []; }
   try { partsInfo = await (await fetch('parts.json')).json(); } catch (e) { partsInfo = null; }
   const sel = $('strokeSel');
@@ -297,7 +311,7 @@ async function loadData() {
   groups.forEach(g => { g.members = g.members.map(norm); g.members.forEach(m => charToGroup.set(m, g)); groupMap.set(g.id, g); });
   kanjiData.forEach(it => kanjiMap.set(it.kanji, it));
   const ss = kanjiData.map(k => k.strokes);
-  for (let i = Math.min(...ss); i <= Math.max(...ss); i++) { $('strokeMin').add(new Option(i, i)); $('strokeMax').add(new Option(i, i)); }
+  for (let i = Math.min(...ss); i <= Math.max(...ss); i++) $('strokeAdd').add(new Option(i + '画', i));
   loadFavs(); updateFavCount();
   kanjiData.forEach(buildParts);
   kanjiData.forEach(it => radCount.set(it._rad, (radCount.get(it._rad) || 0) + 1));
@@ -347,6 +361,13 @@ function initTags() {
     box.appendChild(w);
   });
 }
+function renderSelStrokes() {
+  const box = $('selectedStrokes'); box.innerHTML = '';
+  [...state.strokes].sort((a, b) => a - b).forEach(n => {
+    const c = document.createElement('div'); c.className = 'chip active'; c.textContent = n + '画 ×';
+    c.onclick = () => { state.strokes.delete(n); update(); }; box.appendChild(c);
+  });
+}
 function renderSelTags() {
   const box = $('selectedTags'); box.innerHTML = '';
   [...state.tags].forEach(t => {
@@ -374,10 +395,9 @@ function filterKanji() {
   const xgs = [...state.xgroups].map(id => groupMap.get(id)).filter(Boolean);
   const gs = [...state.groups].map(id => groupMap.get(id)).filter(Boolean);
   const tagSel = [...state.tags];   // タグは複数選ぶと「どれか」
-  let lo = +$('strokeMin').value, hi = +$('strokeMax').value;
-  if (lo && hi && lo > hi) [lo, hi] = [hi, lo];
+  const st = state.strokes;   // 画数は、選んだどれか
   return kanjiData.filter(item => {
-    if ((lo && item.strokes < lo) || (hi && item.strokes > hi)) return false;
+    if (st.size && !st.has(item.strokes)) return false;
     if (rqs.length) {
       const hit = q => item._rs.has(q) || item.kanji.includes(q);
       if (state.rmode === 'and' ? !rqs.every(hit) : !rqs.some(hit)) return false;
@@ -396,7 +416,7 @@ function filterKanji() {
 // 並べ替え（同じ値のときは、次の基準で順番を決める）
 function sortResults(list) {
   const mode = $('sortSel').value;
-  if (mode === 'std') return list;
+  const tagged = it => it.tags.length ? 0 : 1;   // タグあり → タグなし
   const rqs = readingTerms();
   // 読みで検索中は、一致した読みを基準にする
   const yomiOf = it => {
@@ -410,8 +430,12 @@ function sortResults(list) {
     sd:    (a, b) => b.strokes - a.strokes || a._rad - b._rad,
     yomi:  (a, b) => collator.compare(yomiOf(a), yomiOf(b)) || a.strokes - b.strokes,
     bushu: (a, b) => a._rad - b._rad || a.strokes - b.strokes,
-  }[mode];
-  return [...list].sort(cmp);   // 元の並びは変えず、安定して並べ替える
+  };
+  // 標準：タグあり → タグなし、それぞれ部首番号順・同じなら画数順
+  if (mode === 'std') return [...list].sort((a, b) => tagged(a) - tagged(b) || cmp.bushu(a, b));
+  const c = cmp[mode];
+  // 「タグ付きを優先表示」がオンなら、選んだ並べ替えより先にタグの有無で分ける
+  return [...list].sort(state.tagFirst ? (a, b) => tagged(a) - tagged(b) || c(a, b) : c);   // 元の並びは変えず、安定して並べ替える
 }
 
 function update() {
@@ -422,13 +446,16 @@ function update() {
   renderSelected();
   renderSuggest();
   renderSelTags();
+  renderSelStrokes();
+  $('tagFirst').classList.toggle('active', state.tagFirst);
+  $('tagFirst').setAttribute('aria-pressed', state.tagFirst);
   document.querySelectorAll('#tagContainer .chip').forEach(c => c.classList.toggle('active', state.tags.has(c.dataset.tag)));
   syncURL();
   if ($('modal').classList.contains('open')) renderPicker();
 }
 
-// 説明文が「（準備中）」のままの字は、説明欄ごと表示しない
-const hasDesc = it => it.description && !it.description.includes('準備中');
+// 字義（meanings.json）がある字だけ説明を表示する
+const meaningOf = it => meanings[it.kanji] || null;
 
 function cardHTML(item) {
   const on = usable(item.readings.on).join(' / ') || '-';
@@ -442,7 +469,8 @@ function cardHTML(item) {
         <strong>音:</strong> ${on}<br>
         <strong>訓:</strong> ${kun}<br>
         <strong>名:</strong> ${na}</div>
-      ${hasDesc(item) ? `<div class="kanji-desc">${item.description}</div>` : ''}
+      ${meaningOf(item) ? `<div class="kanji-desc">${meaningOf(item).m}</div>` : ''}
+      ${meaningOf(item) && meaningOf(item).place ? `<div class="kanji-place">国名・都市名：${meaningOf(item).place}</div>` : ''}
       ${item.compat ? `<div class="compat">※人名用に認められた同形の互換字があります（${item.compat.map(c => 'U+' + c.toUpperCase()).join('、')}）</div>` : ''}
       <div class="kanji-tags">${item.tags.map(t => `<span class="kanji-tag">#${t}</span>`).join('')}</div></div>`;
 }
@@ -654,8 +682,8 @@ function syncURL() {
   set('c', [...state.chars].join(','));
   set('t', [...state.tags].join(','));
   set('b', [...state.rads].join(','));
-  set('sn', $('strokeMin').value === '0' ? '' : $('strokeMin').value);
-  set('sx', $('strokeMax').value === '0' ? '' : $('strokeMax').value);
+  set('st', [...state.strokes].sort((a, b) => a - b).join(','));
+  set('tp', state.tagFirst ? '1' : '');
   set('xc', [...state.xchars].join(','));
   set('xg', [...state.xgroups].join(','));
   set('s', $('sortSel').value === 'std' ? '' : $('sortSel').value);
@@ -672,7 +700,8 @@ function restoreFromURL() {
   (p.get('c') || '').split(',').filter(Boolean).forEach(x => state.chars.add(x));
   (p.get('t') || '').split(',').filter(Boolean).forEach(x => state.tags.add(x));
   const setSel = (id, v) => { if (v && [...$(id).options].some(o => o.value === v)) $(id).value = v; };
-  setSel('strokeMin', p.get('sn')); setSel('strokeMax', p.get('sx'));
+  (p.get('st') || '').split(',').map(Number).filter(n => n > 0).forEach(n => state.strokes.add(n));   // 旧URLの sn/sx は無視
+  state.tagFirst = p.get('tp') === '1';
   (p.get('xc') || '').split(',').filter(Boolean).forEach(x => state.xchars.add(x));
   (p.get('xg') || '').split(',').filter(Boolean).forEach(x => state.xgroups.add(x));
   (p.get('b') || '').split(',').map(Number).filter(n => n >= 1 && n <= 214).forEach(n => state.rads.add(n));
@@ -713,8 +742,11 @@ onEnter('exInput', () => {
   $('exInput').value = ''; update();
 });
 $('exMode').addEventListener('change', renderPicker);
-$('strokeMin').addEventListener('change', update);
-$('strokeMax').addEventListener('change', update);
+$('strokeAdd').addEventListener('change', () => {
+  const n = +$('strokeAdd').value; if (n) state.strokes.add(n);
+  $('strokeAdd').value = '0'; update();
+});
+$('tagFirst').onclick = () => { state.tagFirst = !state.tagFirst; update(); };
 
 // お気に入り
 $('kanjiGrid').addEventListener('click', e => { const b = e.target.closest('.fav'); if (b) toggleFav(b.dataset.k); });
@@ -749,7 +781,7 @@ $('closePicker').onclick = () => $('modal').classList.remove('open');
 $('modal').onclick = e => { if (e.target.id === 'modal') $('modal').classList.remove('open'); };
 $('clearAll').onclick = () => {
   $('readingInput').value = ''; $('partInput').value = ''; $('exInput').value = '';
-  $('strokeMin').value = '0'; $('strokeMax').value = '0';
+  state.strokes.clear(); state.tagFirst = false;
   state.groups.clear(); state.chars.clear(); state.tags.clear(); state.rads.clear(); state.xchars.clear(); state.xgroups.clear(); viaInput.clear();
   state.readings = []; state.rmode = 'or'; update();
 };

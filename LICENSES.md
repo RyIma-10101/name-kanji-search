@@ -8,6 +8,7 @@
 | groups.json | 形が変わるパーツのグループ定義（自作） | © 2026 RyIma. All rights reserved. |
 | index.html | 画面と検索の処理 | © 2026 RyIma. All rights reserved. |
 | tags.json | イメージ・意味タグ（作者による独自の分類） | © 2026 RyIma. All rights reserved. |
+| meanings.json | 漢字の字義（一般的な辞書の意味をもとに作者が作成・確認） | © 2026 RyIma. All rights reserved. |
 
 ## 出典
 - KANJIDIC2: https://www.edrdg.org/wiki/index.php/KANJIDIC_Project （ライセンス: https://www.edrdg.org/edrdg/license.html ）
