@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>漢字名づけ支援ツール｜パーツやイメージから想いにぴったりの一字を探す</title>
+<meta name="google-site-verification" content="OJZV3eN-7gShR8TOAK0w7AH2erDp5mH-8GvMh2h6OUo" />
+<meta name="description" content="親の想いに最適な一字を探すための漢字検索ツール。常用漢字・人名用漢字を、字に含まれるパーツやイメージ（意味）、読み・部首・画数から絞り込めます。">
+<link rel="canonical" href="https://ryima-10101.github.io/name-kanji-search/">
+<meta property="og:url" content="https://ryima-10101.github.io/name-kanji-search/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="漢字名づけ支援ツール">
+<meta property="og:title" content="漢字名づけ支援ツール｜パーツやイメージから想いにぴったりの一字を探す">
+<meta property="og:description" content="親の想いに最適な一字を探すための漢字検索ツール。常用漢字・人名用漢字を、字に含まれるパーツやイメージ（意味）、読み・部首・画数から絞り込めます。">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E字%3C/text%3E%3C/svg%3E">
+<style>
+:root{--primary-color:#2c3e50;--accent-color:#3498db;--bg-color:#f8f9fa;--card-bg:#fff;--text-color:#333}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg-color);color:var(--text-color);margin:0;padding:20px}
+.container{max-width:800px;margin:0 auto}
+header{text-align:center;margin-bottom:16px}
+header h1{font-size:1.5rem;color:var(--primary-color);margin-bottom:5px}
+header p{font-size:.9rem;color:#666}
+.search-box{background:#e6edf5;padding:12px;border-radius:12px;border:1px solid #cbd7e5;margin-bottom:20px}
+.filter-group{margin-bottom:12px;padding:12px;border:1px solid #b9c7d8;border-radius:8px;background:#fff}
+.filter-group>label{display:block;font-size:.85rem;font-weight:bold;margin-bottom:5px;color:var(--primary-color)}
+.filter-group>label:first-child{margin:-12px -12px 10px;padding:8px 12px;background:var(--primary-color);color:#fff;border-radius:7px 7px 0 0}
+input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;font-size:1rem}
+.tag-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.chip{background:#eef2f7;border:1px solid #dcdde1;padding:6px 12px;border-radius:20px;font-size:.85rem;cursor:pointer;user-select:none;transition:all .2s}
+.chip.active{background:var(--accent-color);color:#fff;border-color:var(--accent-color)}
+.chip.dim{opacity:.4}
+.btn{background:#fff;border:1px solid var(--accent-color);color:var(--accent-color);padding:8px 14px;border-radius:6px;font-size:.9rem;cursor:pointer}
+.btn.primary{background:var(--accent-color);color:#fff}
+.suggest{background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:8px 10px;font-size:.85rem;margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.result-count{font-size:.9rem;color:#666;margin-bottom:10px}
+.kanji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:15px}
+.kanji-card{background:var(--card-bg);border-radius:10px;padding:15px;box-shadow:0 2px 4px rgba(0,0,0,.04);border-left:4px solid var(--accent-color)}
+.kanji-header{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px}
+.kanji-char{font-size:2rem;font-weight:bold;color:var(--primary-color);line-height:1}
+.kanji-meta{font-size:.8rem;color:#666}
+.kanji-readings{font-size:.85rem;margin-bottom:6px}
+.kanji-desc{font-size:.8rem;color:#555;line-height:1.4}
+.kanji-place{font-size:.72rem;color:#8a8f98;margin-top:3px}
+.sort-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip.toggle{font-size:.8rem;padding:5px 10px}
+#kanjiGrid{position:relative}
+.kanji-grid.compact{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.mini-card{position:relative;aspect-ratio:1/1;background:var(--card-bg);border-radius:10px;box-shadow:0 2px 4px rgba(0,0,0,.06);border:1px solid #e3e8ef;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;box-sizing:border-box;overflow:hidden}
+.mini-card.sel{border:2px solid var(--accent-color)}
+.mini-char{font-size:2rem;font-weight:bold;color:var(--primary-color);line-height:1.1}
+.mini-meta{font-size:.68rem;color:#777;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center}
+.mini-card .fav{position:absolute;top:2px;right:2px;font-size:1.1rem;margin:0}
+.kanji-pop{position:absolute;z-index:5;overflow:hidden;box-sizing:border-box;box-shadow:0 6px 20px rgba(0,0,0,.22);transition:left .3s ease,top .3s ease,width .3s ease,height .3s ease}
+.kanji-pop.kanji-card{margin:0}
+@media (prefers-reduced-motion: reduce){.kanji-pop{transition:none}}
+.sort-note{flex-basis:100%;font-size:.72rem;color:#888;margin-top:-4px}
+.kanji-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.kanji-tag{background:#f1f2f6;font-size:.75rem;padding:2px 6px;border-radius:4px;color:#57606f}
+#modal,#favModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10}
+#modal.open,#favModal.open{display:block}
+.sheet{background:#fff;max-width:800px;margin:5vh auto 0;height:90vh;border-radius:12px 12px 0 0;display:flex;flex-direction:column}
+.sheet-head{padding:14px 16px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center}
+.sheet-head input{flex:1}
+.sheet-body{padding:14px 16px;overflow-y:auto;flex:1}
+.sheet-body h3{font-size:.9rem;margin:14px 0 8px;color:var(--primary-color)}
+.grow{margin-bottom:10px}
+.members{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0 12px}
+.big{font-size:1.1rem}
+.note{font-size:.8rem;color:#777}
+.sub{padding:8px 16px;border-bottom:1px solid #eee;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:.85rem}
+.sub select{padding:6px;border:1px solid #ddd;border-radius:6px;font-size:.9rem}
+.hdr{width:100%;font-size:.75rem;color:#888;margin:8px 0 0}
+.exp{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;margin:0 0 4px 12px}
+.okuri{font-weight:300;font-size:.85em;color:#8a8f98}
+.grp-row{flex:0 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.grp-row .chip{white-space:nowrap}
+.grp-row .chip.dim{opacity:1;background:#cfdcec;color:#1f3a5a;border-color:#8aa0b8;font-weight:bold}
+.grp-row .chip.big{font-size:1.1rem}
+.grp-row .exp{margin-left:12px}
+.more-wrap{text-align:center;margin:16px 0}
+.tagcat{margin:10px 0 2px;font-size:.78rem;font-weight:bold;color:#667}
+#tagContainer .chip{font-size:.85rem}
+#tagContainer .chip small{opacity:.7;margin-left:2px}
+.range-row{display:flex;align-items:center;gap:6px;font-size:.9rem}
+.range-row select{padding:6px;border:1px solid #ddd;border-radius:6px;font-size:.9rem}
+.kanji-header{position:relative}
+.fav{margin-left:auto;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#c4c9d0;line-height:1;padding:0 2px}
+.fav.on{color:#f5a623}
+.copy{margin-left:auto;background:none;border:none;cursor:pointer;color:#9aa3ad;line-height:1;padding:2px 4px;display:flex;align-items:center}
+.copy:hover{color:var(--accent-color)}
+.copy+.fav{margin-left:0}
+.copy-msg{position:absolute;right:0;top:calc(100% + 4px);background:var(--primary-color);color:#fff;font-size:.72rem;padding:3px 8px;border-radius:4px;white-space:nowrap;z-index:2;pointer-events:none}
+.intro{max-width:800px;margin:0 auto 12px;font-size:.88rem;color:#444;line-height:1.8}
+.intro p{margin:0}
+.fav-row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}
+.fav-char{font-size:2rem;font-weight:bold;color:var(--primary-color);min-width:2.2rem;text-align:center}
+.fav-info{flex:1;font-size:.8rem;line-height:1.5;color:#555}
+.chip.ex{background:#c0392b;color:#fff;border-color:#c0392b}
+.filter-group>label.sublabel{display:block;font-size:.8rem;font-weight:bold;margin:14px 0 4px;color:#c0392b}
+.about{max-width:800px;margin:0 auto 16px;font-size:.85rem;color:#555;line-height:1.7;background:#fff;border:1px solid #d5dbe3;border-radius:8px;padding:8px 14px}
+.about summary{cursor:pointer;font-weight:bold;color:var(--primary-color);font-size:.9rem}
+.about ul{margin:6px 0 0;padding-left:1.2em}
+.about p{margin:8px 0 0}
+details.radbox summary{cursor:pointer;display:inline-block;list-style:none;background:#fff;border:1px solid var(--accent-color);color:var(--accent-color);padding:8px 14px;border-radius:6px;font-size:.9rem;user-select:none}
+details.radbox summary::-webkit-details-marker{display:none}
+#selectedTags:not(:empty),#selectedRads:not(:empty){margin-bottom:12px}
+#selectedStrokes:not(:empty){margin-top:8px}
+#radBody{margin-top:8px;max-height:50vh;overflow:auto}
+.mode-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:.8rem;color:#666}
+.hint{font-size:.75rem;color:#888;margin-top:4px}
+.result-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.result-bar .result-count{margin-bottom:0}
+.result-bar label{font-size:.85rem;color:#555}
+.result-bar select{padding:6px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;background:#fff}
+footer{max-width:800px;margin:30px auto 0;padding-top:12px;border-top:1px solid #ddd;font-size:.75rem;color:#777;line-height:1.6}
+footer a{color:#777}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>漢字名づけ支援ツール</h1>
+  <p>パーツやイメージから、想いにぴったりの一字を探す</p>
+</header>
+
+<div class="intro">
+  <p>子どもの名づけで、「あと一字」「最高の一字」を探すための漢字検索ツールです。</p>
+  <p>常用漢字・人名用漢字を、画数や意味だけでなく、構成パーツや漢字のイメージから絞り込むことができます。</p>
+  <p>漢字にこだわりがある・漢字に願いを込めて名前を決めていきたいという方々の助けになればうれしいです。</p>
+</div>
+
+<details class="about">
+  <summary>このツールの使い方</summary>
+  <ul>
+    <li><strong>パーツ</strong>：さんずい・車などの構成要素で検索できます。入力方法が分からないパーツは「パーツ一覧から選ぶ」ボタンから選択できます。</li>
+    <li><strong>イメージ</strong>：漢字のイメージをタグでまとめています。一覧からお好みのタグを選択して検索できます。</li>
+    <li><strong>読み</strong>：音読み・訓読み・名乗り読みを、ひらがなの完全一致で検索します。</li>
+    <li><strong>部首</strong>：部首の一覧から選び検索します。</li>
+    <li><strong>画数</strong>：画数が一致する漢字を検索します。</li>
+    <li>検索結果は画数・読み・部首番号で並べ替えることができます。また、タグ付きの漢字を優先して表示することもできます。</li>
+    <li>コンパクト表示に切り替えると、多くの漢字を一覧で見比べられます。タップすると詳しく表示されます。</li>
+  </ul>
+</details>
+
+<div class="search-box">
+  <div class="filter-group">
+    <label for="partInput">パーツ検索</label>
+    <input type="text" id="partInput" placeholder="例: 車 日 氵" enterkeyhint="enter" autocomplete="off">
+    <div class="hint">Enter（改行キー）で検索条件に追加。2文字以上入力の場合、複数一括入力として条件に追加します。複数検索時は全てのパーツを含む漢字を検索します。</div>
+    <div id="suggestBox"></div>
+    <div style="margin-top:8px"><button class="btn" id="openPicker">パーツ一覧から選ぶ</button></div>
+    <div id="selectedParts" class="tag-chips"></div>
+    <label class="sublabel" for="exInput">含まないパーツ（入力したパーツを含む漢字を除けます）</label>
+    <input type="text" id="exInput" placeholder="例: 木 氵" enterkeyhint="enter" autocomplete="off">
+    <div class="hint">Enter（改行キー）で追加。パーツ選択画面の「除外モード」でも選べます。</div>
+    <div id="selectedEx" class="tag-chips"></div>
+  </div>
+
+  <div class="filter-group" id="tagGroup">
+    <label>イメージ検索</label>
+    <div id="selectedTags" class="tag-chips"></div>
+    <details id="tagDetails" class="radbox"><summary data-label="タグを選ぶ">▼ タグを選ぶ</summary><div id="tagContainer"></div></details>
+    <div class="hint">複数選択の場合、いずれかのタグにマッチした漢字を表示します。</div>
+  </div>
+
+  <div class="filter-group">
+    <label for="readingInput">読み検索</label>
+    <input type="text" id="readingInput" placeholder="例: はる, み, てる など" enterkeyhint="enter" autocomplete="off">
+    <div class="hint">完全一致のみ表示します（訓読みの送り仮名はあってもなくても検索されます）。Enter（改行キー）で条件に追加。スペースで区切ると複数一括入力。</div>
+    <div id="selectedReadings" class="tag-chips"></div>
+    <div id="readingMode" class="mode-row"></div>
+  </div>
+
+  <div class="filter-group">
+    <label>部首検索</label>
+    <div id="selectedRads" class="tag-chips"></div>
+    <details id="radDetails" class="radbox"><summary data-label="部首を選ぶ">▼ 部首を選ぶ</summary><div id="radBody"></div></details>
+    <div class="hint">複数選択の場合、いずれかの部首の漢字を表示します。</div>
+  </div>
+
+  <div class="filter-group">
+    <label>画数検索</label>
+    <div class="range-row"><select id="strokeAdd"><option value="0">画数を追加</option></select></div>
+    <div id="selectedStrokes" class="tag-chips"></div>
+    <div class="hint">複数選択の場合、いずれかの画数の漢字を表示します。一般的な漢字辞典の画数であり、姓名判断（旧字体・康熙字典の画数）とは違う可能性があります。</div>
+  </div>
+
+  <button class="btn" id="clearAll">条件をすべてクリア</button>
+</div>
+
+
+<div class="result-bar">
+  <div id="resultCount" class="result-count">検索結果: 0件</div>
+  <button class="btn" id="openFav">★ お気に入り（<span id="favCount">0</span>）</button>
+  <div class="sort-row">
+    <label>並べ替え
+      <select id="sortSel">
+        <option value="std">標準</option>
+        <option value="sa">画数が少ない順</option>
+        <option value="sd">画数が多い順</option>
+        <option value="yomi">読み（五十音）順</option>
+        <option value="bushu">部首番号順</option>
+      </select>
+    </label>
+    <div class="chip toggle" id="tagFirst" role="button" aria-pressed="false">タグ付きを優先表示</div>
+    <div class="chip toggle" id="viewToggle" role="button" aria-pressed="false">コンパクト表示</div>
+  </div>
+  <div class="sort-note">よく使われる漢字や良い意味の漢字に、優先してタグを付けています。</div>
+</div>
+<div id="kanjiGrid" class="kanji-grid"></div>
+<div id="moreWrap" class="more-wrap"></div>
+<noscript><p style="color:#c00">このツールはJavaScriptを使います。JavaScriptを有効にしてご利用ください。</p></noscript>
+
+
+
+<footer>
+  <p><strong>ご注意</strong>　このサイトは名づけの参考を目的としています。届出可能な漢字かどうかは、法務省のウェブサイトや市区町村の窓口などで最新の情報を確認してください。掲載内容の正確さは保証しかねます。</p>
+  <p><strong>漢字データの出典</strong>　漢字の読み・画数・部首などは、<a href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project" target="_blank" rel="noopener">KANJIDIC2</a>（© Electronic Dictionary Research and Development Group）を元にしています。KANJIDIC2 は <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja" target="_blank" rel="noopener">CC BY-SA 4.0</a> で提供されており、ライセンスの詳細は <a href="https://www.edrdg.org/edrdg/license.html" target="_blank" rel="noopener">EDRDG のライセンスページ</a>にあります。本サイトの data.json は、KANJIDIC2 を常用漢字・人名用漢字の範囲に絞り込み、不足分の補完、部首の異体字の追加、互換字の整理などの加工をしたもので、元と同じ CC BY-SA 4.0 で提供します。名乗り読みの一部は、作者が追加したもの（yomi_extra.json）で、名乗り欄の先頭に表示しています。</p>
+  <p><strong>パーツデータの出典</strong>　パーツ（構成要素）のデータ（components.json・parts.json）は、<a href="https://gitlab.chise.org/CHISE/ids" target="_blank" rel="noopener">CHISE プロジェクトの IDS データ</a>と<a href="https://github.com/cjkvi/cjkvi-ids" target="_blank" rel="noopener">漢字データベースプロジェクト（cjkvi-ids）</a>を元に、本サイト用に選別・編集（改変）したものです。<a href="COPYING.txt" target="_blank" rel="noopener">GNU General Public License v2 以降</a>で提供します。無保証です。</p>
+  <p><strong>字義</strong>　一般的な辞書をもとにした意味を、<span id="cntMean">―</span>字に表示しています。イメージタグは<span id="cntTag">―</span>字に付いています（どちらも、このサイトに載っている漢字の中での数です）。</p>
+  <p>常用漢字・人名用漢字の範囲は、文化庁・法務省の公表資料に基づいています。部首番号は康熙部首の番号です。</p>
+  <p><strong>旧字体について</strong>　旧字体は、端末やアプリによっては自動で元の字（正字）に置き換えられる場合があります。</p>
+  <p><strong>お問い合わせ</strong>　内容等の不備（漢字データ、著作権・ライセンスの扱いなど）を見つけた場合は、速やかに修正いたしますので、ご連絡ください。連絡先：10101ryima10101-at-gmail.com（「-at-」を「@」に置き換えてください）</p>
+  <p>© 2026 RyIma. All rights reserved.（上記の出典データを除く、このサイトの画面・検索の仕組み・イメージタグ・字義について）</p>
+</footer>
+</div>
+
+<!-- お気に入り -->
+<div id="favModal">
+  <div class="sheet">
+    <div class="sheet-head">
+      <strong style="flex:1">お気に入り（検討リスト）</strong>
+      <button class="btn primary" id="closeFav">完了</button>
+    </div>
+    <div class="sub">
+      <button class="btn" id="favCopy">一覧をコピー</button>
+      <button class="btn" id="favClear">すべて削除</button>
+      <span id="favMsg" style="color:#27ae60"></span>
+    </div>
+    <div class="sheet-body">
+      <div class="note">お気に入りは、この端末のこのブラウザにだけ保存されます。ブラウザのデータを消すと、消えます。</div>
+      <div id="favBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- パーツ選択画面 -->
+<div id="modal">
+  <div class="sheet">
+    <div class="sheet-head">
+      <input type="text" id="pickerFilter" placeholder="パーツを絞り込み（字や名前）">
+      <button class="btn primary" id="closePicker">完了</button>
+    </div>
+    <div class="sub">
+      <label>画数 <select id="strokeSel"><option value="0">すべて</option></select></label>
+      <label><input type="checkbox" id="showMinor"> 1字だけ含むパーツも表示</label>
+      <label style="color:#c0392b;font-weight:bold"><input type="checkbox" id="exMode"> 除外モード（タップしたパーツを含む漢字を除く）</label>
+    </div>
+    <div class="sheet-body" id="pickerBody"></div>
+  </div>
+</div>
+
+<script>
+let kanjiData = [], groups = [], partsInfo = null;
+const state = { groups: new Set(), chars: new Set(), tags: new Set(), readings: [], rmode: 'or', rads: new Set(), xchars: new Set(), xgroups: new Set(), strokes: new Set(), tagFirst: false };
+let compact = false;           // コンパクト表示（この端末のブラウザに保存）
+try { compact = localStorage.getItem('kanjiView') === 'compact'; } catch (e) {}
+let meanings = {};             // 漢字 → {m:字義, place:国名・都市名}
+let yomiExtra = {};            // 漢字 → 作者が追加した読み（名乗り読みの先頭に表示）
+const NC = { cache: 'no-cache' };   // JSONは毎回「更新があるか」を確認する（古い表示が残らないように）
+const radCount = new Map();   // 部首番号ごとの漢字数
+const kanjiMap = new Map();   // 漢字 → データ
+let tagCats = [];             // [{name, tags:[{name, desc}]}]
+const tagCat = new Map();     // タグ → カテゴリ名
+const tagCount = new Map();   // タグ → 漢字数
+let favList = [];             // お気に入り（追加した順）
+const viaInput = new Set();   // 入力欄からEnterで追加したパーツ（グループ提案の対象）
+const openGroups = new Set();
+let charToGroup = new Map(), partFreq = new Map(), groupMap = new Map();
+const PAGE = 120;               // 一度に表示する件数
+let lastResults = [], shown = 0;
+let timer = null, composing = false;
+
+// 部首用の別コードの字を、ふつうの字に統一する対応表
+const NORM = {'⺡':'氵','⺗':'忄','⺾':'艹','⻌':'辶','⺨':'犭','⻟':'飠'};
+const norm = c => NORM[c] || c;
+// カタカナ→ひらがな、「.」「-」を除去（読み検索用）
+const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/[.\-]/g, '');
+const $ = id => document.getElementById(id);
+
+// ---- 部首番号（康熙部首 1〜214。並び順＝番号。同じ部首の異体字はスペース区切り）----
+const BUSHU = ["一", "丨", "丶", "丿", "乙", "亅", "二", "亠", "人 亻", "儿", "入", "八", "冂", "冖", "冫", "几", "凵", "刀 刂", "力", "勹", "匕", "匚", "匸", "十", "卜", "卩", "厂", "厶", "又", "口", "囗", "土", "士", "夂", "夊", "夕", "大", "女", "子", "宀", "寸", "小", "尢 尣", "尸", "屮", "山", "巛 川", "工", "己 已 巳", "巾", "干", "幺", "广", "廴", "廾", "弋", "弓", "彐 彐 彑", "彡", "彳", "心 忄", "戈", "戶 戸", "手 扌", "支", "攴 攵", "文", "斗", "斤", "方", "无 旡", "日", "曰", "月", "木", "欠", "止", "歹 歺", "殳", "毋 母", "比", "毛", "氏", "气", "水 氵 氺", "火 灬", "爪 爫", "父", "爻", "爿", "片", "牙", "牛 牜", "犬 犭", "玄", "玉 王", "瓜", "瓦", "甘", "生", "用", "田", "疋", "疒", "癶", "白", "皮", "皿", "目 罒", "矛", "矢", "石", "示 礻", "禸", "禾", "穴", "立", "竹", "米", "糸", "缶", "网", "羊", "羽 羽", "老 耂", "而", "耒", "耳", "聿", "肉 月", "臣", "自", "至", "臼", "舌", "舛", "舟", "艮", "色", "艸 艹", "虍", "虫", "血", "行", "衣 衤", "襾 西 覀", "見", "角", "言 訁", "谷", "豆", "豕", "豸", "貝", "赤", "走", "足 𧾷", "身", "車", "辛", "辰", "辵 辶", "邑 阝", "酉", "釆", "里", "金 釒", "長", "門", "阜 阝", "隶", "隹", "雨", "靑 青", "非", "面", "革", "韋", "韭", "音", "頁", "風", "飛", "食 飠", "首", "香", "馬", "骨", "高", "髟", "鬥", "鬯", "鬲", "鬼", "魚", "鳥", "鹵", "鹿", "麥 麦", "麻", "黃 黄", "黍", "黑 黒", "黹", "黽", "鼎", "鼓", "鼠", "鼻", "齊 斉", "齒 歯", "龍 竜", "龜 亀", "龠"];
+const RAD = new Map();
+BUSHU.forEach((forms, i) => forms.split(/\s+/).forEach((t, k) => { if (!RAD.has(t) || k === 0) RAD.set(t, i + 1); }));
+const collator = new Intl.Collator('ja');
+// 各画数の最後の部首番号（1画〜17画）。番号順がそのまま画数順
+const RADEND = [6, 29, 60, 94, 117, 146, 166, 175, 186, 194, 200, 204, 208, 210, 211, 213, 214];
+const RADNOTE = { 74: 'つき', 130: 'にくづき', 163: 'おおざと', 170: 'こざと' };   // 同じ形（月・阝）を区別する注記
+const radStrokes = n => RADEND.findIndex(e => n <= e) + 1;
+const radLabel = n => {
+  const f = [...new Set(BUSHU[n - 1].split(/\s+/))].filter(t => !(n === 130 && t === '月'));
+  return f.join('・') + (RADNOTE[n] ? `（${RADNOTE[n]}）` : '');
+};
+
+// ---- 読みの整理 ----
+// 「-ぞい」「はや-」のような接続形は表示も検索もしない
+const isJoin = r => r.startsWith('-') || r.endsWith('-');
+const usable = arr => (arr || []).filter(r => !isJoin(r));
+// HTMLに埋め込む文字列は、記号を無害な形にしてから使う
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// 作者が追加した読み
+const extraOf = it => (yomiExtra[it.kanji] || []).filter(r => typeof r === 'string' && r);
+// 名乗り読み：追加した読みを先頭に、重複（ひらがなにして同じもの）は除く
+function nanoriOf(it) {
+  const seen = new Set(), out = [];
+  [...extraOf(it), ...usable(it.readings.nanori)].forEach(r => { const k = toHira(r); if (k && !seen.has(k)) { seen.add(k); out.push(r); } });
+  return out;
+}
+// 送り仮名（「.」以降）を細く小さい文字にする： は.や.い → は<細>やい</細>
+function okuriHTML(r) {
+  const i = r.indexOf('.');
+  if (i < 0) return esc(r);
+  return esc(r.slice(0, i)) + '<span class="okuri">' + esc(r.slice(i + 1).replace(/\./g, '')) + '</span>';
+}
+
+// ---------- 読み込み ----------
+async function loadData() {
+  try {
+    kanjiData = await (await fetch('data.json', NC)).json();
+    // パーツ（構成要素）は別ファイル（ライセンスが異なるため）。読み込んで各漢字に付ける
+    const cj = await (await fetch('components.json', NC)).json();
+    kanjiData.forEach(it => { it.components = cj.components[it.kanji] || []; });
+  } catch (e) {
+    $('kanjiGrid').innerHTML = '<p style="color:red;">data.json または components.json を読み込めませんでした。</p>';
+    return;
+  }
+  // イメージタグ（別ファイル。無くても他の機能は使える）
+  try {
+    const tj = await (await fetch('tags.json', NC)).json();
+    tagCats = tj.categories || [];
+    kanjiData.forEach(it => { it.tags = (tj.kanji && tj.kanji[it.kanji]) || []; });
+  } catch (e) { tagCats = []; kanjiData.forEach(it => { it.tags = []; }); }
+  // 字義（別ファイル。無くても他の機能は使える）
+  try { meanings = ((await (await fetch('meanings.json', NC)).json()).kanji) || {}; } catch (e) { meanings = {}; }
+  // 作者が追加した読み（別ファイル。無くても他の機能は使える）
+  try { yomiExtra = ((await (await fetch('yomi_extra.json', NC)).json()).readings) || {}; } catch (e) { yomiExtra = {}; }
+  try { groups = await (await fetch('groups.json', NC)).json(); } catch (e) { groups = []; }
+  try { partsInfo = await (await fetch('parts.json', NC)).json(); } catch (e) { partsInfo = null; }
+  const sel = $('strokeSel');
+  for (let i = 2; i <= 9; i++) sel.add(new Option(i + '画', i));
+  sel.add(new Option('10画以上', 10));
+  groups.forEach(g => { g.members = g.members.map(norm); g.members.forEach(m => charToGroup.set(m, g)); groupMap.set(g.id, g); });
+  kanjiData.forEach(it => kanjiMap.set(it.kanji, it));
+  const ss = kanjiData.map(k => k.strokes);
+  for (let i = Math.min(...ss); i <= Math.max(...ss); i++) $('strokeAdd').add(new Option(i + '画', i));
+  loadFavs(); updateFavCount();
+  kanjiData.forEach(buildParts);
+  kanjiData.forEach(it => radCount.set(it._rad, (radCount.get(it._rad) || 0) + 1));
+  initTags();
+  restoreFromURL();
+  [...state.tags].forEach(t => { if (!tagCount.has(t)) state.tags.delete(t); });   // 名前を変えたタグ（古いURL）は外す
+  update();
+}
+
+// 各漢字の「パーツ一覧」＝ components ＋ 部首欄
+function buildParts(item) {
+  const s = new Set();
+  item.components.forEach(c => { c = (c || '').trim(); if (c) s.add(norm(c)); });
+  const toks = item.radical.split(/\s+/).filter(Boolean);
+  toks.forEach(t => { if (toks[0] === '肉' && t === '月') t = '⺼'; s.add(norm(t)); }); // 月とにくづきは別扱い
+  item._parts = s;
+  item._rad = RAD.get(toks[0]) || 999;   // 部首の先頭の字から番号を求める
+  const first = usable(item.readings.on)[0] || usable(item.readings.kun)[0] || usable(item.readings.nanori)[0];
+  item._yomi = first ? toHira(first.split('.')[0]) : '\uffff';   // 読みなしは最後
+  // 読みは完全一致で探す。訓読み（は.る）は「はる」「は」のどちらでも当たる
+  const rs = new Set();
+  [...usable(item.readings.on), ...usable(item.readings.kun), ...usable(item.readings.nanori)].forEach(r => {
+    const full = toHira(r); if (full) rs.add(full);
+    if (r.includes('.')) { const stem = toHira(r.split('.')[0]); if (stem) rs.add(stem); }
+  });
+  extraOf(item).forEach(r => { const h = toHira(r); if (h) rs.add(h); });   // 追加した読みも検索の対象
+  item._rs = rs;
+  s.forEach(p => partFreq.set(p, (partFreq.get(p) || 0) + 1));
+}
+
+function initTags() {
+  tagCat.clear(); tagCount.clear();
+  tagCats.forEach(c => c.tags.forEach(t => tagCat.set(t.name, c.name)));
+  kanjiData.forEach(k => k.tags.forEach(t => tagCount.set(t, (tagCount.get(t) || 0) + 1)));
+  $('cntTag').textContent = kanjiData.filter(k => k.tags.length).length;
+  $('cntMean').textContent = kanjiData.filter(k => meanings[k.kanji]).length;
+  const box = $('tagContainer'); box.innerHTML = '';
+  $('tagGroup').style.display = tagCount.size ? '' : 'none';   // タグが無い間は欄ごと隠す
+  tagCats.forEach(c => {
+    const list = c.tags.filter(t => tagCount.get(t.name));
+    if (!list.length) return;
+    const h = document.createElement('div'); h.className = 'tagcat'; h.textContent = c.name; box.appendChild(h);
+    const w = document.createElement('div'); w.className = 'tag-chips';
+    list.forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = 'chip'; chip.dataset.tag = t.name; chip.title = t.desc || '';
+      chip.textContent = t.name;
+      const sm = document.createElement('small'); sm.textContent = tagCount.get(t.name); chip.appendChild(sm);
+      chip.onclick = () => { state.tags.has(t.name) ? state.tags.delete(t.name) : state.tags.add(t.name); update(); };
+      w.appendChild(chip);
+    });
+    box.appendChild(w);
+  });
+}
+function renderSelStrokes() {
+  const box = $('selectedStrokes'); box.innerHTML = '';
+  [...state.strokes].sort((a, b) => a - b).forEach(n => {
+    const c = document.createElement('div'); c.className = 'chip active'; c.textContent = n + '画 ×';
+    c.onclick = () => { state.strokes.delete(n); update(); }; box.appendChild(c);
+  });
+}
+function renderSelTags() {
+  const box = $('selectedTags'); box.innerHTML = '';
+  [...state.tags].forEach(t => {
+    const c = document.createElement('div'); c.className = 'chip active'; c.textContent = t + ' ×';
+    c.onclick = () => { state.tags.delete(t); update(); }; box.appendChild(c);
+  });
+}
+
+// ---------- 条件 ----------
+const typedFrom = id => [...$(id).value].filter(c => c.trim() && !',、'.includes(c)).map(norm);
+const typedChars = () => typedFrom('partInput');
+
+// 読みの検索語：追加済みのタグ＋入力中の文字（ひらがなに正規化、重複なし）
+function readingTerms() {
+  const all = [...state.readings, $('readingInput').value]
+    .map(t => toHira(t.trim().normalize('NFC'))).filter(Boolean);
+  return [...new Set(all)];
+}
+
+function filterKanji() {
+  // 条件は最初に1回だけ用意する（漢字ごとに作り直さない）
+  const rqs = readingTerms();
+  const need = [...typedChars(), ...state.chars];
+  const xneed = [...typedFrom('exInput'), ...state.xchars];   // 含まないパーツ
+  const xgs = [...state.xgroups].map(id => groupMap.get(id)).filter(Boolean);
+  const gs = [...state.groups].map(id => groupMap.get(id)).filter(Boolean);
+  const tagSel = [...state.tags];   // タグは複数選ぶと「どれか」
+  const st = state.strokes;   // 画数は、選んだどれか
+  return kanjiData.filter(item => {
+    if (st.size && !st.has(item.strokes)) return false;
+    if (rqs.length) {
+      const hit = q => item._rs.has(q) || item.kanji.includes(q);
+      if (state.rmode === 'and' ? !rqs.every(hit) : !rqs.some(hit)) return false;
+    }
+    for (const ch of need) if (!item._parts.has(ch)) return false;
+    for (const g of gs) if (!g.members.some(m => item._parts.has(m))) return false; // グループ内はOR
+    for (const ch of xneed) if (item._parts.has(ch)) return false;                  // 含まない
+    for (const g of xgs) if (g.members.some(m => item._parts.has(m))) return false;
+    if (tagSel.length && !tagSel.some(t => item.tags.includes(t))) return false;
+    if (state.rads.size && !state.rads.has(item._rad)) return false;   // 部首は、選んだどれか
+    return true;
+  });
+}
+
+// ---------- 表示 ----------
+// 並べ替え（同じ値のときは、次の基準で順番を決める）
+function sortResults(list) {
+  const mode = $('sortSel').value;
+  const tagged = it => it.tags.length ? 0 : 1;   // タグあり → タグなし
+  const rqs = readingTerms();
+  // 読みで検索中は、一致した読みを基準にする
+  const yomiOf = it => {
+    for (const q of rqs) {
+      if (it._rs.has(q)) return q;
+    }
+    return it._yomi;
+  };
+  const cmp = {
+    sa:    (a, b) => a.strokes - b.strokes || a._rad - b._rad,
+    sd:    (a, b) => b.strokes - a.strokes || a._rad - b._rad,
+    yomi:  (a, b) => collator.compare(yomiOf(a), yomiOf(b)) || a.strokes - b.strokes,
+    bushu: (a, b) => a._rad - b._rad || a.strokes - b.strokes,
+  };
+  // 標準：タグあり → タグなし、それぞれ部首番号順・同じなら画数順
+  if (mode === 'std') return [...list].sort((a, b) => tagged(a) - tagged(b) || cmp.bushu(a, b));
+  const c = cmp[mode];
+  // 「タグ付きを優先表示」がオンなら、選んだ並べ替えより先にタグの有無で分ける
+  return [...list].sort(state.tagFirst ? (a, b) => tagged(a) - tagged(b) || c(a, b) : c);   // 元の並びは変えず、安定して並べ替える
+}
+
+function update() {
+  renderResults(sortResults(filterKanji()));
+  renderReadings();
+  renderSelRads();
+  if ($('radDetails').open) renderRadicals();
+  renderSelected();
+  renderSuggest();
+  renderSelTags();
+  renderSelStrokes();
+  $('tagFirst').classList.toggle('active', state.tagFirst);
+  $('tagFirst').setAttribute('aria-pressed', state.tagFirst);
+  $('viewToggle').classList.toggle('active', compact);
+  $('viewToggle').setAttribute('aria-pressed', compact);
+  document.querySelectorAll('#tagContainer .chip').forEach(c => c.classList.toggle('active', state.tags.has(c.dataset.tag)));
+  syncURL();
+  if ($('modal').classList.contains('open')) renderPicker();
+}
+
+// 字義（meanings.json）がある字だけ説明を表示する
+const meaningOf = it => meanings[it.kanji] || null;
+
+function cardHTML(item) {
+  const on = usable(item.readings.on).map(esc).join(' / ') || '-';
+  const kun = usable(item.readings.kun).map(okuriHTML).join(' / ') || '-';
+  const na = nanoriOf(item).map(esc).join(' / ') || '-';
+  return `<div class="kanji-card">
+      <div class="kanji-header"><span class="kanji-char">${esc(item.kanji)}</span>
+        <div class="kanji-meta">画数: ${esc(item.strokes)}画<br>部首: ${esc(item.radical)}</div>
+        <button class="copy" data-k="${esc(item.kanji)}" aria-label="この漢字をコピー" title="コピー"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        <button class="fav${isFav(item.kanji) ? ' on' : ''}" data-k="${esc(item.kanji)}" aria-label="お気に入り">${isFav(item.kanji) ? '★' : '☆'}</button></div>
+      <div class="kanji-readings">
+        <strong>音:</strong> ${on}<br>
+        <strong>訓:</strong> ${kun}<br>
+        <strong>名:</strong> ${na}</div>
+      ${meaningOf(item) ? `<div class="kanji-desc"><strong>字義:</strong> ${esc(meaningOf(item).m)}</div>` : ''}
+      ${meaningOf(item) && meaningOf(item).place ? `<div class="kanji-place">国・都市の一文字表記：${esc(meaningOf(item).place)}</div>` : ''}
+      <div class="kanji-tags">${item.tags.map(t => `<span class="kanji-tag">#${esc(t)}</span>`).join('')}</div></div>`;
+}
+
+// 結果は PAGE 件ずつ表示（全件を一度に作ると重くなるため）
+function renderResults(results) {
+  closePop(true);
+  lastResults = results; shown = 0;
+  $('kanjiGrid').classList.toggle('compact', compact);
+  $('resultCount').textContent = `検索結果: ${results.length}件`;
+  const grid = $('kanjiGrid');
+  if (!results.length) {
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;padding:20px;">条件に一致する漢字が見つかりませんでした。</p>';
+    $('moreWrap').innerHTML = ''; return;
+  }
+  grid.innerHTML = '';
+  showMore();
+}
+// コンパクト表示の小さいカード（漢字・画数・部首・☆）
+function miniHTML(item) {
+  return `<div class="mini-card" data-k="${esc(item.kanji)}"><span class="mini-char">${esc(item.kanji)}</span>
+    <span class="mini-meta">${esc(item.strokes)}画・${esc(item.radical.split(/\s+/)[0])}</span>
+    <button class="fav${isFav(item.kanji) ? ' on' : ''}" data-k="${esc(item.kanji)}" aria-label="お気に入り">${isFav(item.kanji) ? '★' : '☆'}</button></div>`;
+}
+function showMore() {
+  const next = lastResults.slice(shown, shown + PAGE);
+  $('kanjiGrid').insertAdjacentHTML('beforeend', next.map(compact ? miniHTML : cardHTML).join(''));
+  shown += next.length;
+  const w = $('moreWrap'); w.innerHTML = '';
+  if (shown < lastResults.length) {
+    const b = document.createElement('button');
+    b.className = 'btn'; b.textContent = `さらに表示（${shown} / ${lastResults.length}件）`;
+    b.onclick = showMore; w.appendChild(b);
+  }
+}
+
+// 追加済みの読み（×で解除）と、複数あるときの AND/OR 切り替え
+function renderReadings() {
+  const box = $('selectedReadings'); box.innerHTML = '';
+  state.readings.forEach(t => {
+    const c = document.createElement('div'); c.className = 'chip active'; c.textContent = t + ' ×';
+    c.onclick = () => { state.readings = state.readings.filter(x => x !== t); update(); };
+    box.appendChild(c);
+  });
+  const m = $('readingMode'); m.innerHTML = '';
+  if (readingTerms().length >= 2) {
+    const lab = document.createElement('span'); lab.textContent = '複数の読みは:'; m.appendChild(lab);
+    [['or', 'どれか含む（OR）'], ['and', 'すべて含む（AND）']].forEach(([v, text]) => {
+      m.appendChild(mkChip(text, state.rmode === v, () => { state.rmode = v; update(); }));
+    });
+  }
+}
+
+// 部首の選択（画数ごとに並べる。0字の部首は出さない）
+function renderRadicals() {
+  const body = $('radBody'); body.innerHTML = '';
+  let cur = 0, w = null;
+  for (let n = 1; n <= 214; n++) {
+    const cnt = radCount.get(n) || 0; if (!cnt) continue;
+    const st = radStrokes(n);
+    if (st !== cur) {
+      cur = st; w = document.createElement('div'); w.className = 'tag-chips';
+      const h = document.createElement('div'); h.className = 'hdr'; h.textContent = st + '画'; w.appendChild(h); body.appendChild(w);
+    }
+    w.appendChild(mkChip(`${radLabel(n)} (${cnt})`, state.rads.has(n), () => { state.rads.has(n) ? state.rads.delete(n) : state.rads.add(n); update(); }, 'big'));
+  }
+}
+function renderSelRads() {
+  const box = $('selectedRads'); box.innerHTML = '';
+  [...state.rads].sort((a, b) => a - b).forEach(n => {
+    const c = document.createElement('div'); c.className = 'chip active'; c.textContent = radLabel(n) + ' ×';
+    c.onclick = () => { state.rads.delete(n); update(); }; box.appendChild(c);
+  });
+}
+
+// 選択中のパーツ（×で解除）
+function renderSelected() {
+  const box = $('selectedParts'); box.innerHTML = '';
+  const add = (text, fn) => { const c = document.createElement('div'); c.className = 'chip active'; c.textContent = text + ' ×'; c.onclick = fn; box.appendChild(c); };
+  state.groups.forEach(id => { const g = groups.find(x => x.id === id); if (g) add(g.label, () => { state.groups.delete(id); update(); }); });
+  state.chars.forEach(ch => add(ch, () => { state.chars.delete(ch); viaInput.delete(ch); update(); }));
+  // 含まないパーツ（赤）
+  const xb = $('selectedEx'); xb.innerHTML = '';
+  const xadd = (text, fn) => { const c = document.createElement('div'); c.className = 'chip ex'; c.textContent = '除く: ' + text + ' ×'; c.onclick = fn; xb.appendChild(c); };
+  state.xgroups.forEach(id => { const g = groupMap.get(id); if (g) xadd(g.label, () => { state.xgroups.delete(id); update(); }); });
+  state.xchars.forEach(ch => xadd(ch, () => { state.xchars.delete(ch); update(); }));
+}
+
+// 入力欄にグループ所属の字があれば提案
+function renderSuggest() {
+  const box = $('suggestBox'); box.innerHTML = '';
+  const seen = new Set();
+  // 入力中の字、と、Enterで追加したパーツが対象（パーツ選択画面で選んだ形は対象外）
+  const targets = [...typedChars(), ...[...state.chars].filter(c => viaInput.has(c))];
+  targets.forEach(ch => {
+    const g = charToGroup.get(ch);
+    if (!g || seen.has(g.id) || state.groups.has(g.id)) return;
+    seen.add(g.id);
+    const d = document.createElement('div'); d.className = 'suggest';
+    const sp = document.createElement('span'); sp.textContent = `「${ch}」は${g.label}にも含められます。`; d.appendChild(sp);
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'グループで探す';
+    b.onclick = () => {
+      $('partInput').value = [...$('partInput').value].filter(c => !g.members.includes(norm(c))).join('');
+      g.members.forEach(m => { state.chars.delete(m); viaInput.delete(m); });
+      state.groups.add(g.id); update();
+    };
+    d.appendChild(b); box.appendChild(d);
+  });
+}
+
+// ---------- パーツ選択画面 ----------
+function mkChip(text, active, fn, extra) {
+  const c = document.createElement('div');
+  c.className = 'chip' + (active ? ' active' : '') + (extra ? ' ' + extra : '');
+  c.textContent = text; c.onclick = fn; return c;
+}
+function renderPicker() {
+  const body = $('pickerBody'); body.innerHTML = '';
+  const q = $('pickerFilter').value.trim();
+  const sv = +$('strokeSel').value, minor = $('showMinor').checked;
+  const live = p => partFreq.get(p) || 0;
+  const exm = () => $('exMode').checked;
+  const flip = (set, other, k) => { if (set.has(k)) set.delete(k); else { set.add(k); other.delete(k); } };   // 含める/除くは同時に選べない
+  const toggleChar = x => () => { viaInput.delete(x); exm() ? flip(state.xchars, state.chars, x) : flip(state.chars, state.xchars, x); update(); };
+  const toggleGroup = g => () => { exm() ? flip(state.xgroups, state.groups, g.id) : flip(state.groups, state.xgroups, g.id); update(); };
+  const exc = x => state.xchars.has(x) ? ' ex' : '';
+  const head = (text, note) => {
+    const h = document.createElement('h3'); h.textContent = text; body.appendChild(h);
+    if (note) { const n = document.createElement('div'); n.className = 'note'; n.textContent = note; body.appendChild(n); }
+  };
+  const box = () => { const w = document.createElement('div'); w.className = 'tag-chips'; body.appendChild(w); return w; };
+  // グループは1グループごとに1行（文字の大きさは他のパーツと同じ）
+  const addGroup = (wrap, g) => {
+    const row = document.createElement('div'); row.className = 'grp-row';
+    row.appendChild(mkChip(g.label, state.groups.has(g.id), toggleGroup(g), 'big' + (state.xgroups.has(g.id) ? ' ex' : '')));
+    row.appendChild(mkChip(openGroups.has(g.id) ? '▲閉じる' : '▼形を指定', false, () => { openGroups.has(g.id) ? openGroups.delete(g.id) : openGroups.add(g.id); renderPicker(); }, 'dim'));
+    if (openGroups.has(g.id)) {
+      const m = document.createElement('div'); m.className = 'exp';
+      g.members.filter(x => live(x)).forEach(x => m.appendChild(mkChip(`${x} (${live(x)})`, state.chars.has(x), toggleChar(x), 'big' + exc(x))));
+      row.appendChild(m);
+    }
+    wrap.appendChild(row);
+  };
+  // ① おすすめ
+  if (partsInfo && !q) {
+    head('おすすめパーツ', 'タップで選択。形が変わるものは「▼形を指定」で特定の形だけに絞れます。');
+    const w = box();
+    // グループを先に、単独のパーツをあとに並べる（それぞれ元の順）
+    const rec = partsInfo.recommended.map(e => ({ e, g: e.group && groupMap.get(e.group) }));
+    rec.filter(x => x.g).forEach(x => addGroup(w, x.g));
+    rec.filter(x => !x.g).forEach(x => {
+      const p = norm(x.e.forms[0]);
+      w.appendChild(mkChip(p, state.chars.has(p), toggleChar(p), 'big' + (live(p) ? '' : ' dim') + exc(p)));
+    });
+  }
+  // ② グループ一覧
+  head('形が変わるパーツ（グループ）');
+  const gw = box();
+  groups.filter(g => !q || g.label.includes(q) || g.members.some(m => q.includes(m))).forEach(g => addGroup(gw, g));
+  // ③ すべてのパーツ（画数順）
+  head('すべてのパーツ（画数順）', '氵などグループの形は、上のグループから選びます。');
+  let list = partsInfo ? partsInfo.parts.map(e => ({ p: norm(e.p), s: e.strokes }))
+                       : [...partFreq.keys()].map(p => ({ p, s: 0 }));
+  list = list.filter(x => !charToGroup.has(x.p) && live(x.p) >= (minor ? 1 : 2) && (!q || q.includes(x.p)) &&
+                          (!sv || (sv === 10 ? x.s >= 10 : x.s === sv)));
+  list.sort((a, b) => a.s - b.s || live(b.p) - live(a.p));
+  if (!list.length) { const n = document.createElement('div'); n.className = 'note'; n.textContent = '該当するパーツがありません。'; body.appendChild(n); }
+  let w = null, cur = -1;
+  list.forEach(x => {
+    if (x.s !== cur) { cur = x.s; w = box(); if (x.s) { const h = document.createElement('div'); h.className = 'hdr'; h.textContent = x.s + '画'; w.appendChild(h); } }
+    w.appendChild(mkChip(`${x.p} (${live(x.p)})`, state.chars.has(x.p), toggleChar(x.p), 'big' + exc(x.p)));
+  });
+}
+
+// ---------- お気に入り（この端末のブラウザに保存） ----------
+const isFav = k => favList.includes(k);
+function loadFavs() {
+  try {
+    const a = JSON.parse(localStorage.getItem('kanjiFavs') || '[]');
+    favList = Array.isArray(a) ? a.filter(k => kanjiMap.has(k)) : [];
+  } catch (e) { favList = []; }
+}
+function saveFavs() {
+  try { localStorage.setItem('kanjiFavs', JSON.stringify(favList)); } catch (e) { /* 保存できない環境では、開いている間だけ有効 */ }
+}
+function updateFavCount() { $('favCount').textContent = favList.length; }
+function toggleFav(k) {
+  favList = isFav(k) ? favList.filter(x => x !== k) : [...favList, k];
+  saveFavs(); updateFavCount();
+  document.querySelectorAll('.fav').forEach(b => {
+    if (b.dataset.k === k) { b.classList.toggle('on', isFav(k)); b.textContent = isFav(k) ? '★' : '☆'; }
+  });
+  if ($('favModal').classList.contains('open')) renderFavs();
+}
+function favRowHTML(k) {
+  const it = kanjiMap.get(k);
+  const on = usable(it.readings.on).map(esc).join(' / ') || '-';
+  const kun = usable(it.readings.kun).map(okuriHTML).join(' / ') || '-';
+  const na = nanoriOf(it).map(esc).join(' / ') || '-';
+  return `<div class="fav-row"><div class="fav-char">${esc(k)}</div>
+    <div class="fav-info">${esc(it.strokes)}画<br>音: ${on}<br>訓: ${kun}<br>名: ${na}</div>
+    <button class="btn" data-del="${esc(k)}">削除</button></div>`;
+}
+function renderFavs() {
+  $('favBody').innerHTML = favList.length ? favList.map(favRowHTML).join('')
+    : '<p class="note">まだありません。漢字カードの ☆ をタップすると追加できます。</p>';
+}
+
+// ---------- URL連動 ----------
+function syncURL() {
+  const p = new URLSearchParams();
+  const set = (k, v) => { if (v) p.set(k, v); };
+  set('r', [...state.readings, $('readingInput').value.trim()].filter(Boolean).join(','));
+  set('rm', state.rmode === 'and' ? 'and' : '');
+  set('p', $('partInput').value.trim());
+  set('g', [...state.groups].join(','));
+  set('c', [...state.chars].join(','));
+  set('t', [...state.tags].join(','));
+  set('b', [...state.rads].join(','));
+  set('st', [...state.strokes].sort((a, b) => a - b).join(','));
+  set('tp', state.tagFirst ? '1' : '');
+  set('xc', [...state.xchars].join(','));
+  set('xg', [...state.xgroups].join(','));
+  set('s', $('sortSel').value === 'std' ? '' : $('sortSel').value);
+  const s = p.toString();
+  history.replaceState(null, '', s ? '?' + s : location.pathname);
+}
+function restoreFromURL() {
+  const p = new URLSearchParams(location.search);
+  $('readingInput').value = '';
+  (p.get('r') || '').split(/[,、]/).map(x => x.trim()).filter(Boolean).forEach(x => { if (!state.readings.includes(x)) state.readings.push(x); });
+  state.rmode = p.get('rm') === 'and' ? 'and' : 'or';
+  $('partInput').value = p.get('p') || '';
+  (p.get('g') || '').split(',').filter(Boolean).forEach(x => state.groups.add(x));
+  (p.get('c') || '').split(',').filter(Boolean).forEach(x => state.chars.add(x));
+  (p.get('t') || '').split(',').filter(Boolean).forEach(x => state.tags.add(x));
+  const setSel = (id, v) => { if (v && [...$(id).options].some(o => o.value === v)) $(id).value = v; };
+  (p.get('st') || '').split(',').map(Number).filter(n => n > 0).forEach(n => state.strokes.add(n));   // 旧URLの sn/sx は無視
+  state.tagFirst = p.get('tp') === '1';
+  (p.get('xc') || '').split(',').filter(Boolean).forEach(x => state.xchars.add(x));
+  (p.get('xg') || '').split(',').filter(Boolean).forEach(x => state.xgroups.add(x));
+  (p.get('b') || '').split(',').map(Number).filter(n => n >= 1 && n <= 214).forEach(n => state.rads.add(n));
+  const sv = p.get('s'); if ([...$('sortSel').options].some(o => o.value === sv)) $('sortSel').value = sv;
+}
+
+// ---------- イベント ----------
+// 入力のたびに検索せず、入力が止まってから検索する。変換中（IME）は待つ。
+let compEndAt = 0;
+function schedule(fn, ms) { clearTimeout(timer); timer = setTimeout(fn, ms); }
+['readingInput', 'partInput', 'exInput'].forEach(id => {
+  const el = $(id);
+  el.addEventListener('compositionstart', () => { composing = true; clearTimeout(timer); });
+  el.addEventListener('compositionend', () => { composing = false; compEndAt = Date.now(); schedule(update, 150); });
+  el.addEventListener('input', e => { if (composing || e.isComposing) return; schedule(update, 150); });
+});
+
+// Enterで入力欄の文字をタグにする（変換を確定するEnterは除く）
+function onEnter(id, fn) {
+  $(id).addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (composing || e.isComposing || e.keyCode === 229 || Date.now() - compEndAt < 60) return;
+    e.preventDefault(); clearTimeout(timer); fn();
+  });
+}
+onEnter('readingInput', () => {
+  $('readingInput').value.trim().normalize('NFC').split(/[\s,、]+/).filter(Boolean).forEach(t => {
+    if (!state.readings.some(x => toHira(x) === toHira(t))) state.readings.push(t);
+  });
+  $('readingInput').value = ''; update();
+});
+onEnter('partInput', () => {
+  typedChars().forEach(ch => { state.chars.add(ch); viaInput.add(ch); state.xchars.delete(ch); });
+  $('partInput').value = ''; update();
+});
+onEnter('exInput', () => {
+  typedFrom('exInput').forEach(ch => { state.xchars.add(ch); state.chars.delete(ch); viaInput.delete(ch); });
+  $('exInput').value = ''; update();
+});
+$('exMode').addEventListener('change', renderPicker);
+$('strokeAdd').addEventListener('change', () => {
+  const n = +$('strokeAdd').value; if (n) state.strokes.add(n);
+  $('strokeAdd').value = '0'; update();
+});
+$('tagFirst').onclick = () => { state.tagFirst = !state.tagFirst; update(); };
+$('viewToggle').onclick = () => {
+  compact = !compact;
+  try { localStorage.setItem('kanjiView', compact ? 'compact' : 'detail'); } catch (e) {}
+  update();
+};
+
+// ---------- コンパクト表示：タップで横に広げる ----------
+let pop = null, popSrc = null, pressAt = 0, pressX = 0, pressY = 0, scrollAt = 0;
+const DUR = 300;   // アニメーションの長さ（ミリ秒）
+// 小さいカードの位置（グリッド基準）
+function rectIn(el) {
+  const g = $('kanjiGrid').getBoundingClientRect(), r = el.getBoundingClientRect();
+  return { left: r.left - g.left, top: r.top - g.top, width: r.width, height: r.height };
+}
+function openPop(mini) {
+  const item = kanjiMap.get(mini.dataset.k); if (!item) return;
+  const grid = $('kanjiGrid'), from = rectIn(mini);
+  const el = document.createElement('div');
+  el.innerHTML = cardHTML(item);
+  const card = el.firstElementChild;
+  card.classList.add('kanji-pop');
+  // 広げたあとの高さを先に測る
+  card.style.cssText = `left:0;top:${from.top}px;width:${grid.clientWidth}px;visibility:hidden;transition:none`;
+  grid.appendChild(card);
+  const fullH = card.scrollHeight;
+  // 小さいカードの位置から始める
+  card.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px;transition:none`;
+  card.getBoundingClientRect();   // 位置を確定させてからアニメーション
+  card.style.transition = '';
+  card.style.left = '0px'; card.style.width = grid.clientWidth + 'px'; card.style.height = fullH + 'px';
+  setTimeout(() => { if (pop === card) card.style.height = 'auto'; }, DUR + 20);
+  mini.classList.add('sel');
+  pop = card; popSrc = mini; scrollAt = window.scrollY;
+}
+function closePop(instant) {
+  if (!pop) return;
+  const card = pop, mini = popSrc; pop = null; popSrc = null;
+  if (mini) mini.classList.remove('sel');
+  if (instant || !mini || !mini.isConnected) { card.remove(); return; }
+  const to = rectIn(mini);
+  card.style.height = card.offsetHeight + 'px';
+  card.getBoundingClientRect();
+  card.style.left = to.left + 'px'; card.style.width = to.width + 'px'; card.style.height = to.height + 'px';
+  setTimeout(() => card.remove(), DUR + 20);
+}
+// 長押し（コピーのため）は反応しない。短いタップだけを扱う
+document.addEventListener('pointerdown', e => { pressAt = Date.now(); pressX = e.clientX; pressY = e.clientY; }, true);
+document.addEventListener('click', e => {
+  const isTap = Date.now() - pressAt < 500 && Math.abs(e.clientX - pressX) < 10 && Math.abs(e.clientY - pressY) < 10;
+  if (!isTap) return;
+  if (e.target.closest('.fav, .copy')) return;               // ☆はお気に入りだけ・コピーはコピーだけ（カードは閉じない）
+  const selText = String(window.getSelection && window.getSelection());
+  if (pop && e.target.closest('.kanji-pop') && selText) return; // 文字を選んでいる間は閉じない
+  const mini = e.target.closest('.mini-card');
+  if (pop) { const same = mini && mini === popSrc; closePop(); if (same || !mini) return; }
+  if (mini) openPop(mini);
+}, true);
+// スワイプ（スクロール）したら閉じる
+window.addEventListener('scroll', () => { if (pop && Math.abs(window.scrollY - scrollAt) > 12) closePop(); }, { passive: true });
+window.addEventListener('resize', () => closePop(true));
+
+// お気に入り
+$('kanjiGrid').addEventListener('click', e => { const b = e.target.closest('.fav'); if (b) toggleFav(b.dataset.k); });
+$('openFav').onclick = () => { renderFavs(); $('favModal').classList.add('open'); };
+$('closeFav').onclick = () => $('favModal').classList.remove('open');
+$('favModal').onclick = e => { if (e.target.id === 'favModal') $('favModal').classList.remove('open'); };
+$('favBody').addEventListener('click', e => { const b = e.target.closest('[data-del]'); if (b) toggleFav(b.dataset.del); });
+$('favClear').onclick = () => { if (favList.length && confirm('お気に入りをすべて削除しますか？')) { favList = []; saveFavs(); updateFavCount(); renderFavs(); update(); } };
+// クリップボードにコピー（使えない環境は execCommand で代用）
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, text.length);
+    let ok = false; try { ok = document.execCommand('copy'); } catch (_) {} ta.remove(); return ok;
+  }
+}
+// カードのコピーボタン：漢字1字をコピーして「コピーしました」を少し表示
+$('kanjiGrid').addEventListener('click', async e => {
+  const b = e.target.closest('.copy'); if (!b) return;
+  const ok = await copyText(b.dataset.k);
+  const head = b.closest('.kanji-header');
+  head.querySelectorAll('.copy-msg').forEach(x => x.remove());
+  const msg = document.createElement('span'); msg.className = 'copy-msg';
+  msg.textContent = ok ? 'コピーしました' : 'コピーできませんでした';
+  head.appendChild(msg);
+  setTimeout(() => msg.remove(), 1500);
+});
+$('favCopy').onclick = async () => {
+  const text = favList.join('、'); if (!text) return;
+  const ok = await copyText(text);
+  $('favMsg').textContent = ok ? 'コピーしました' : 'コピーできませんでした';
+  setTimeout(() => { $('favMsg').textContent = ''; }, 2000);
+};
+$('pickerFilter').addEventListener('input', () => schedule(renderPicker, 150));
+$('sortSel').addEventListener('change', update);
+$('radDetails').addEventListener('toggle', () => { if ($('radDetails').open) renderRadicals(); });
+// 開いているときは「▲ 折りたたむ」、閉じているときは「▼ ○○を選ぶ」
+document.querySelectorAll('details.radbox').forEach(d => {
+  const sm = d.querySelector('summary');
+  d.addEventListener('toggle', () => { sm.textContent = d.open ? '▲ 折りたたむ' : '▼ ' + sm.dataset.label; });
+});
+$('strokeSel').addEventListener('change', renderPicker);
+$('showMinor').addEventListener('change', renderPicker);
+$('openPicker').onclick = () => { $('modal').classList.add('open'); renderPicker(); };
+$('closePicker').onclick = () => $('modal').classList.remove('open');
+$('modal').onclick = e => { if (e.target.id === 'modal') $('modal').classList.remove('open'); };
+$('clearAll').onclick = () => {
+  $('readingInput').value = ''; $('partInput').value = ''; $('exInput').value = '';
+  state.strokes.clear(); state.tagFirst = false;
+  state.groups.clear(); state.chars.clear(); state.tags.clear(); state.rads.clear(); state.xchars.clear(); state.xgroups.clear(); viaInput.clear();
+  state.readings = []; state.rmode = 'or'; update();
+};
+
+loadData();
+</script>
+</body>
+</html>
