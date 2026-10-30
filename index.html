@@ -43,18 +43,18 @@ input[type=text]{width:100%;padding:10px;box-sizing:border-box;border:1px solid 
 /* 漢字カード：左の列＝漢字（白地・カード全体の縦中央）、右側は上から タグ／読み／字義 */
 .kanji-card{background:var(--card-bg);border-radius:10px;border:1px solid #dfe5ec;box-shadow:0 2px 4px rgba(0,0,0,.04);overflow:hidden}
 .kc-body{display:grid;grid-template-columns:84px minmax(0,1fr) 64px;grid-template-rows:auto auto auto auto;min-height:128px}
-.kc-char{grid-column:1;grid-row:1/5;display:flex;align-items:center;justify-content:center;padding-left:4px}
+.kc-char{grid-column:1;grid-row:1/5;display:flex;align-items:center;justify-content:center;padding-left:4px;margin:10px 0;border-right:1px dashed #c3d0e0}
 .kc-charbox{position:relative;text-align:center}
 .kanji-char{display:block;font-size:3rem;font-weight:bold;color:var(--primary-color);line-height:1}
 /* 画数・部首は漢字のすぐ下に置く（漢字そのものが中央に来るよう、高さの計算からは外す） */
 .kc-meta{position:absolute;top:100%;left:50%;transform:translateX(-50%);width:76px;font-size:.72rem;color:#8a8f98;margin-top:4px;line-height:1.3;word-break:break-all}
-.kc-tags{grid-column:2;grid-row:1;min-height:36px;box-sizing:border-box;padding:6px 2px;display:flex;flex-wrap:wrap;gap:4px;align-content:center;align-items:center}
+.kc-tags{grid-column:2;grid-row:1;min-height:36px;box-sizing:border-box;padding:6px 2px 6px 10px;display:flex;flex-wrap:wrap;gap:4px;align-content:center;align-items:center}
 .kc-btns{grid-column:3;grid-row:1;display:flex;align-items:center;justify-content:center;gap:2px;position:relative}
-.kc-read{grid-column:2/-1;grid-row:2;background:#f2f5f9;padding:7px 12px 7px 6px;font-size:.85rem;line-height:1.6}
+.kc-read{grid-column:2/-1;grid-row:2;background:#eef3f9;border-radius:8px;margin:0 10px 0 8px;padding:7px 10px;font-size:.85rem;line-height:1.6}
 .kc-read .lb{font-size:.7rem;color:#8a8f98;margin-right:6px}
 .kc-read .rv{font-weight:bold}
-.kc-desc{grid-column:2/-1;grid-row:3;padding:8px 12px 10px 6px;font-size:.95rem;color:#444;line-height:1.6}
-.kanji-place{grid-column:2/-1;grid-row:4;font-size:.72rem;color:#8a8f98;padding:0 12px 10px 6px;margin-top:-4px}
+.kc-desc{grid-column:2/-1;grid-row:3;padding:8px 12px 10px 10px;font-size:.95rem;color:#444;line-height:1.6}
+.kanji-place{grid-column:2/-1;grid-row:4;font-size:.72rem;color:#8a8f98;padding:0 12px 10px 10px;margin-top:-4px}
 .kanji-tag{background:#e8f1fb;font-size:.75rem;padding:2px 7px;border-radius:4px;color:#24527d}
 .sort-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .chip.toggle{font-size:.8rem;padding:5px 10px}
